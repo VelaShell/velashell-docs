@@ -491,7 +491,7 @@ flowchart TD
     Iso --> RPC["named-pipe RPC<br/>heartbeat · self-healing restart · idle recycling"]
     RPC --> UI2["standalone card window / embedded in host"]
 
-    Ctx --> Caps["<b>Capability surface</b><br/>Sessions · Terminal · RemoteExec · RemoteFs<br/>RemoteTunnel · Protocols · Workspaces<br/>Storage · TimeSeries · Secrets<br/>Commands · Events · Ui · Clipboard · Log"]
+    Ctx --> Caps["<b>Capability surface</b><br/>Sessions · Terminal · RemoteExec · RemoteFs<br/>RemoteTunnel · Network · Protocols · Workspaces<br/>Storage · TimeSeries · Secrets<br/>Commands · Events · Ui · Clipboard · Log"]
 
     style PM fill:#1d3557,color:#fff
     style Gate fill:#7c4a03,color:#fff

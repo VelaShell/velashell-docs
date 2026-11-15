@@ -43,7 +43,7 @@
 `hostMode` 决定插件跑在哪:
 
 - `inProcess`(默认):宿主进程内的可收集 ALC。面板可停靠成主窗口标签页,可用
-  `Protocols` / `Workspaces` / `RemoteTunnel` / `TerminalView` 这几项能力。
+  `Protocols` / `Workspaces` / `RemoteTunnel` / `Network` / `TerminalView` 这几项能力。
 - `isolated`:独立 `VelaShell.PluginHost` 进程,崩溃/卡死不影响宿主;面板是独立卡片窗口。
 
 发布后改 `hostMode` 是**行为变更**,请当作次版本升级并在更新说明里写清。

@@ -45,7 +45,7 @@ host marks it Incompatible **during discovery** and says exactly what to upgrade
 ### 1.3 Host mode
 
 - `inProcess` (default): a collectible ALC inside the host process. Panels dock as main-window
-  tabs, and the `Protocols` / `Workspaces` / `RemoteTunnel` / `TerminalView` capabilities are
+  tabs, and the `Protocols` / `Workspaces` / `RemoteTunnel` / `Network` / `TerminalView` capabilities are
   available.
 - `isolated`: its own `VelaShell.PluginHost` process; crashes and hangs cannot take the host
   down. Panels are standalone card windows.

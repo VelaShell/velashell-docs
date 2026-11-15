@@ -88,6 +88,7 @@ DTO 与不透明 id),所以同一份插件源码在 `inProcess` 与 `isolated` �
 | `RemoteFs` (`IRemoteFsApi`)         | 目录/属性/读写/传输/重命名/删除                                                  | 基于既有会话的 SFTP                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `RemoteExec` (`IRemoteExecApi`)     | `RunAsync`(整段结果)/ `StreamAsync`(按行回调)                                    | 独立通道,**不进用户终端**                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `RemoteTunnel` (`IRemoteTunnelApi`) | `OpenUnixSocketAsync` / `OpenTcpAsync`                                           | 到远端端点的**裸字节双工流**(Docker Engine API、tar 流这类二进制协议)。仅 `inProcess`                                                                                                                                                                                                                                                                                                                                                       |
+| `Network` (`INetworkApi`)           | `ConnectTcpAsync` → `HostTcpConnection`                                          | 按**宿主代理设置**(none / system / http / socks5)建立出站 TCP;插件拿到已连通的流,看不到代理地址与凭据。插件的裸 TCP 一律经它。仅 `inProcess`。SDK TBD(发版时替换) |
 | `Terminal` (`ITerminalApi`)         | `GetOutputAsync` / `SearchOutputAsync` / `WriteAsync`                            | 读取/搜索会话输出;**回写输入需要用户授权**(管理页可撤销)                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ### 3.3a sudo 专用执行（SDK 2.1.0）
@@ -225,7 +226,7 @@ SDK 2.1.9 新增的下载 `ApprovalContext` 与 MCP 自动批准例外见 [§3.3
 
 宿主为第一方 `velashell.ai` 的 `DisplayMode.Document` 提供专属右侧区域：宽度与固定/自动隐藏由宿主管理，不使用 `PlacementRatio` 或发出 `PlacementRatioChanged`。隐藏、折叠不关闭句柄，`ActivateAsync` 恢复同一控件。普通插件文档分栏的宽度契约与 SDK 包保持不变；完整宿主策略见 [UI 扩展](../plugins/08-ui-extensions.md)。
 
-> **`inProcess` 专属的四项**(`RemoteTunnel` / `TerminalView` / `Protocols` / `Workspaces`)
+> **`inProcess` 专属的五项**(`RemoteTunnel` / `Network` / `TerminalView` / `Protocols` / `Workspaces`)
 > 在隔离模式下调用会抛"能力不可用"。它们交出去的都是活的原生对象或裸流,
 > 跨进程边界没有等价物 —— 需要它们就把 `hostMode` 设成 `inProcess`。
 
@@ -385,6 +386,7 @@ if (ctx.Ui.SupportsNotifications)
 | **2.1.4** | 条件撤回：`IRemoteFsApi.SupportsTransferWithdraw` / `WithdrawPendingTransferAsync`、`RemoteTransferWithdrawOutcome` / `RemoteTransferWithdrawResult`、`fs/transfer/withdraw` RPC 与 `FsTransferWithdrawRequest`、握手 `HandshakeResponse.SupportsTransferWithdraw`、测试替身 `FakeRemoteFs.WithdrawTransferHandler`（§3.3f）。已正式发布，宿主已接上。只增不改，`apiLevel` 不变。 | 用到就要（`2.1.4`）；AI 清单声明的是 2.1.5 |
 | **2.1.5** | 工作台变体图标与连接框自定义分页：`WorkspaceVariant.Icon`（类型选择卡片图标，`null` 回落描述符 `Icon`）、`WorkspaceDescriptor.Pages`、`ProtocolSettingPage(Key, Label)`、`ProtocolSettingField.Page`（优先于 `IsAdvanced`；键不在 `Pages` 里按 `null`；与 `VisibleWhen` 为「与」）。语义见[开发指南 §5.14.1](../templates/dev-guide.md)。只增不改，`apiLevel` 不变。 | 用到就要（`2.1.5`） |
 | **2.1.7** | `ProtocolSettingGroup(Key, Label)` 与可选 `ProtocolSettingField.SelectionGroup`：同页 Boolean 字段的分组复选树；只影响呈现，不改变设置键值。空白键及非 Boolean 字段回落原编辑器。详见[开发指南 §5.14.1](../templates/dev-guide.md)。已正式发布，`apiLevel` 不变；2.1.6 包不包含此契约。 | 用到就要（`2.1.7`）；宿主、插件包引用已升级，RDP 清单的 `minSdkVersion` 已同步为 2.1.7。 |
+| **TBD**(发版时替换) | 出站网络能力 `INetworkApi`(`ctx.Network`):`ConnectTcpAsync` 按宿主代理设置替插件建立 TCP,返回 `HostTcpConnection`(`Stream` / `ViaProxy` / 直连时的 `RemoteEndPoint`);选项 `TcpConnectOptions`(建立超时、`NoDelay`、keep-alive);代理不成立或握手失败抛 `NetworkProxyException`(`IOException`);测试替身 `FakeNetwork`。仅 `inProcess`。见[开发指南 §5.15](../templates/dev-guide.md)。只增不改,`apiLevel` 不变。 | 用到就要(发版后的版本号) |
 
 ### 2.0 迁移
 
@@ -428,7 +430,7 @@ public async Task Activate_RegistersCommand()
 ```
 
 可用替身:`CollectingLogger`、`InMemoryStorage`、`InMemoryTimeSeries`、`FakeSessions`、
-`FakeRemoteFs`、`FakeRemoteExec`、`FakeRemoteTunnel`、`FakeTerminal`、`FakeTerminalViewApi`、
+`FakeRemoteFs`、`FakeRemoteExec`、`FakeRemoteTunnel`、`FakeNetwork`、`FakeTerminal`、`FakeTerminalViewApi`、
 `FakeUi`（SDK 2.1.3 起另有通知成员，见 §3.7）、`FakeSecrets`、`FakeClipboard`、`RecordingCommands`、`RecordingProtocols`、
 `RecordingWorkspaces`、`TestHostEvents`、`TestHostInfo`。
 
