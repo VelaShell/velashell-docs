@@ -406,7 +406,7 @@ flowchart TD
     Iso --> RPC["命名管道 RPC<br/>心跳 · 自愈重启 · 空闲回收"]
     RPC --> UI2["独立卡片窗口 / 嵌入宿主"]
 
-    Ctx --> Caps["<b>能力面</b><br/>Sessions · Terminal · RemoteExec · RemoteFs<br/>RemoteTunnel · Protocols · Workspaces<br/>Storage · TimeSeries · Secrets<br/>Commands · Events · Ui · Clipboard · Log"]
+    Ctx --> Caps["<b>能力面</b><br/>Sessions · Terminal · RemoteExec · RemoteFs<br/>RemoteTunnel · Network · Protocols · Workspaces<br/>Storage · TimeSeries · Secrets<br/>Commands · Events · Ui · Clipboard · Log"]
 
     style PM fill:#1d3557,color:#fff
     style Gate fill:#7c4a03,color:#fff

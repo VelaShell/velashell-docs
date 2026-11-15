@@ -1049,6 +1049,41 @@ Give several `Boolean` fields the same `SelectionGroup = new("drives", "Drives")
 - Groups introduce no saved settings keys: original field keys still handle saving and reopening. Newly discovered devices use their field defaults rather than inheriting a previous category selection.
 - This is optional additive metadata, officially published in SDK 2.1.7; `apiLevel` is unchanged. Using this contract requires host/plugin references to SDK 2.1.7 or later and a plugin `minSdkVersion` of at least 2.1.7; the host must also implement the corresponding form rendering. The 2.1.6 packages do not contain this contract.
 
+### 5.15 Network: Outbound TCP Through the Host's Proxy (SDK TBD, replaced at release)
+
+```csharp
+await using HostTcpConnection connection = await context.Network.ConnectTcpAsync(
+    host, port,
+    new TcpConnectOptions { KeepAliveIdle = TimeSpan.FromSeconds(30) },
+    token);
+Stream stream = connection.Stream;   // connected; dispose the connection, not the stream
+```
+
+**Why not `new TcpClient()`.** The host's **Settings → Network Proxy** (none / system / http / socks5)
+applies only to connections the host dials. `HttpClient` uses the process-wide `HttpClient.DefaultProxy`,
+which the host replaces with its own proxy, so HTTP-based plugins (such as S3) follow it automatically;
+**raw TCP ignores every proxy setting**, so a socket the plugin opens itself always goes direct.
+Do not read the proxy settings and implement SOCKS5 / HTTP CONNECT yourself either: the host owns the only
+proxy implementation, and the plugin gets a connected stream **without ever seeing the proxy address or credentials**.
+
+- The host resolves the route with the same resolver SSH / SFTP / FTP use. Loopback targets (including the
+  local forwarding port the host opens for an SSH tunnel) always go direct, so "the SSH tunnel takes priority
+  over the proxy" needs no logic in the plugin.
+- When `ViaProxy` is true, `RemoteEndPoint` is `null`: the local socket's peer is the proxy, not the target.
+  A protocol that opens **additional** connections to the same target (such as RDP's UDP multitransport)
+  must turn them off when proxied, or they bypass the proxy or connect to the proxy server's address.
+- A misconfigured proxy, a refusal or a failed handshake throws `NetworkProxyException` (an `IOException`
+  with a localized message), so you can point the user at the network proxy settings. The host **never**
+  silently falls back to a direct connection.
+- `TcpConnectOptions`: `ConnectTimeout` defaults to 15 seconds, capped at 2 minutes by the host, and covers
+  setup only; `NoDelay` defaults to true; `KeepAliveIdle` is off by default, and when proxied it applies to
+  the leg to the proxy.
+- **`inProcess` only**, for the same reason as RemoteTunnel. Calling it from an isolated process throws
+  `NotSupportedException`.
+- In tests use `TestPluginContext.FakeNetwork`: `Handler` / `Responses` script replies, `ViaProxy` simulates
+  a proxy, `Failure` simulates a proxy error, and `Connected` records requests.
+- Using it requires declaring `minSdkVersion` (the released version number); see
+  [Packaging and publishing §1.2](publishing.md).
 ## 6. Isolated Process Mode (`isolated`)
 
 Declare `"hostMode": "isolated"` in the manifest and the plugin runs in a separate

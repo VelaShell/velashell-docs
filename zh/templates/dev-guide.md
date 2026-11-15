@@ -1063,6 +1063,35 @@ new WorkspaceDescriptor {
 - 分组不产生新的设置键，仍按原字段键保存和回显。新出现的设备使用各字段的默认值，不继承类别的上次全选状态。
 - 契约为可选新增元数据，已随 SDK 2.1.7 正式发布，`apiLevel` 不变。使用此契约需要宿主及插件引用 SDK 2.1.7 或更高版本，插件 `minSdkVersion` 至少为 2.1.7；宿主还须实现对应的表单呈现。2.1.6 包不含此契约。
 
+### 5.15 Network —— 按宿主代理建立出站 TCP(SDK TBD,发版时替换)
+
+```csharp
+await using HostTcpConnection connection = await context.Network.ConnectTcpAsync(
+    host, port,
+    new TcpConnectOptions { KeepAliveIdle = TimeSpan.FromSeconds(30) },
+    token);
+Stream stream = connection.Stream;   // 已连通;不要单独释放它,释放 connection
+```
+
+**为什么不自己 `new TcpClient()`。** 宿主的「设置 → 网络代理」(none / system / http / socks5)只作用于
+经过宿主拨号的连接。`HttpClient` 走进程级 `HttpClient.DefaultProxy`,宿主已把它换成自己的代理,
+所以 HTTP 类插件(如 S3)自动跟随;**裸 TCP 不看任何代理设置** —— 插件直接建的 socket 永远直连。
+也不要自己读代理配置、自己实现 SOCKS5 / HTTP CONNECT:代理只有宿主这一份实现,
+插件拿到的是已连通的流,**看不到代理地址与凭据**。
+
+- 路由由宿主解析,与 SSH / SFTP / FTP 用的是同一个解析器。环回目标(含宿主为 SSH 隧道建的本地转发端口)
+  总是直连,所以「SSH 隧道优先于代理」不需要插件判断。
+- `ViaProxy` 为 true 时 `RemoteEndPoint` 是 `null`:本机 socket 的对端是代理而不是目标。
+  协议若还会**另开**到同一目标的连接(例如 RDP 的 UDP 多传输),必须在经代理时关掉,
+  否则那条连接会绕过代理,或者连到代理服务器的地址上。
+- 代理配置不成立、代理拒绝或握手失败抛 `NetworkProxyException`(`IOException` 子类,消息已本地化),
+  可以据此提示用户去检查网络代理设置。宿主**不会**因此静默改为直连。
+- `TcpConnectOptions`:`ConnectTimeout` 默认 15 秒、上限 2 分钟(宿主夹取),只管建立阶段;
+  `NoDelay` 默认 true;`KeepAliveIdle` 默认不开 —— 经代理时设置的是到代理的那一段。
+- **只在 `inProcess` 可用**,理由同 RemoteTunnel。隔离进程里调用抛 `NotSupportedException`。
+- 测试用 `TestPluginContext.FakeNetwork`:`Handler` / `Responses` 脚本化应答,`ViaProxy` 模拟经代理,
+  `Failure` 模拟代理失败,`Connected` 记录请求。
+- 用到它要声明 `minSdkVersion`(发版后的版本号),见[打包与发布 §1.2](publishing.md)。
 ## 6. 隔离进程模式(isolated)
 
 在 manifest 里声明 `"hostMode": "isolated"`,插件即运行在独立的
