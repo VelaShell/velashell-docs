@@ -72,7 +72,7 @@ Local text and IME commits are sent as Unicode. Printable keys without `KeySymbo
 
 ### RD Gateway
 
-On **RD Gateway**, set `gatewayHost` and `gatewayPort` (443 by default). The ordinary server/port remains the internal RDP destination, resolved by the gateway. The client uses MS-TSGU RDGHTTP over HTTPS/WebSocket at `/remoteDesktopGateway/`, requiring a Windows Server 2016+ gateway with WebSocket transport enabled. Gateway connections use TCP only; they never fall back to a direct connection. Combining a gateway with an SSH jump is rejected.
+On **RD Gateway**, set `gatewayHost` and `gatewayPort` (443 by default). The ordinary server/port remains the internal RDP destination, resolved by the gateway. The client uses MS-TSGU RDGHTTP over HTTPS/WebSocket at `/remoteDesktopGateway/`, requiring a Windows Server 2016+ gateway with WebSocket transport enabled. Gateway connections use TCP only; they never fall back to a direct connection. Combining a gateway with an SSH jump is rejected. The HTTPS/WebSocket connection to the gateway follows the host's **Settings → Network Proxy** (none / follow system / HTTP / SOCKS5).
 
 `gatewayUseRdpCredentials` defaults to `true`. Disable it to supply `gatewayUsername`, `gatewayPassword` and optional `gatewayDomain`; the password is a secret setting. HTTP authentication permits Negotiate/Kerberos and NTLM, rejecting Basic-only authentication and redirects. Linux/macOS Kerberos requires the system Kerberos setup described below, with an HTTP service principal for the gateway hostname. Target TLS/NLA still authenticates the original RDP server independently.
 
