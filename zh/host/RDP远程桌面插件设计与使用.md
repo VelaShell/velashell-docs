@@ -72,7 +72,7 @@ English: [RDP plugin: design and use](../../en/host/rdp-plugin-design-and-use.md
 
 ### RD Gateway
 
-在「RD Gateway」页填写 `gatewayHost` 与 `gatewayPort`（默认 443）。原来的服务器与端口仍是内网 RDP 目标，由网关解析。客户端通过 `/remoteDesktopGateway/` 使用 MS-TSGU RDGHTTP 的 HTTPS/WebSocket 传输，需要启用 WebSocket 传输的 Windows Server 2016+ 网关。网关连接仅走 TCP，失败不会回退直连；同时配置网关与 SSH 跳板会被拒绝。
+在「RD Gateway」页填写 `gatewayHost` 与 `gatewayPort`（默认 443）。原来的服务器与端口仍是内网 RDP 目标，由网关解析。客户端通过 `/remoteDesktopGateway/` 使用 MS-TSGU RDGHTTP 的 HTTPS/WebSocket 传输，需要启用 WebSocket 传输的 Windows Server 2016+ 网关。网关连接仅走 TCP，失败不会回退直连；同时配置网关与 SSH 跳板会被拒绝。到网关的 HTTPS/WebSocket 连接跟随宿主「设置 → 网络代理」（不使用 / 跟随系统 / HTTP / SOCKS5）。
 
 `gatewayUseRdpCredentials` 默认 `true`，复用目标凭据；关闭后填写独立的 `gatewayUsername`、`gatewayPassword` 和可选 `gatewayDomain`，密码按秘密设置保存。HTTP 认证允许 Negotiate/Kerberos 与 NTLM，拒绝仅提供 Basic 的服务器和 HTTP 重定向。Linux/macOS Kerberos 需要下文的系统 Kerberos 配置，并为网关主机名配置 HTTP 服务主体。目标 RDP 的 TLS/NLA 仍单独校验原始目标身份。
 
