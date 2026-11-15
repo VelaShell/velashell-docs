@@ -1049,7 +1049,7 @@ Give several `Boolean` fields the same `SelectionGroup = new("drives", "Drives")
 - Groups introduce no saved settings keys: original field keys still handle saving and reopening. Newly discovered devices use their field defaults rather than inheriting a previous category selection.
 - This is optional additive metadata, officially published in SDK 2.1.7; `apiLevel` is unchanged. Using this contract requires host/plugin references to SDK 2.1.7 or later and a plugin `minSdkVersion` of at least 2.1.7; the host must also implement the corresponding form rendering. The 2.1.6 packages do not contain this contract.
 
-### 5.15 Network: Outbound TCP Through the Host's Proxy (SDK TBD, replaced at release)
+### 5.15 Network: Outbound TCP Through the Host's Proxy (SDK 2.2.0)
 
 ```csharp
 await using HostTcpConnection connection = await context.Network.ConnectTcpAsync(
@@ -1072,9 +1072,10 @@ proxy implementation, and the plugin gets a connected stream **without ever seei
 - When `ViaProxy` is true, `RemoteEndPoint` is `null`: the local socket's peer is the proxy, not the target.
   A protocol that opens **additional** connections to the same target (such as RDP's UDP multitransport)
   must turn them off when proxied, or they bypass the proxy or connect to the proxy server's address.
-- A misconfigured proxy, a refusal or a failed handshake throws `NetworkProxyException` (an `IOException`
+- With a proxy selected, every proxy-related failure (misconfiguration, proxy unreachable, refusal, authentication failure, handshake timeout) throws `NetworkProxyException` (an `IOException`
   with a localized message), so you can point the user at the network proxy settings. The host **never**
-  silently falls back to a direct connection.
+  silently falls back to a direct connection. A failed direct connection is the OS `SocketException`; a direct
+  timeout is `TimeoutException`.
 - `TcpConnectOptions`: `ConnectTimeout` defaults to 15 seconds, capped at 2 minutes by the host, and covers
   setup only; `NoDelay` defaults to true; `KeepAliveIdle` is off by default, and when proxied it applies to
   the leg to the proxy.
@@ -1082,7 +1083,7 @@ proxy implementation, and the plugin gets a connected stream **without ever seei
   `NotSupportedException`.
 - In tests use `TestPluginContext.FakeNetwork`: `Handler` / `Responses` script replies, `ViaProxy` simulates
   a proxy, `Failure` simulates a proxy error, and `Connected` records requests.
-- Using it requires declaring `minSdkVersion` (the released version number); see
+- Using it requires declaring `minSdkVersion: "2.2.0"`; see
   [Packaging and publishing §1.2](publishing.md).
 ## 6. Isolated Process Mode (`isolated`)
 
