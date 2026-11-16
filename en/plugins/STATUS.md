@@ -8,7 +8,7 @@
 > [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli); the
 > `dotnet new` templates are in
 > [velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates);
-> the Redis / S3 / Telnet / Serial / MongoDB / Docker panel / RDP plugins are in
+> the Redis / S3 / Telnet / Serial / MongoDB / Docker panel / RDP / VNC plugins are in
 > [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins).
 > Paths such as `plugin-sdk/…`, `tools/…` and `templates/…` on this page (and in blueprints
 > 01–15) refer to the first three; `tests/VelaShell.Plugin.{Redis,S3,Telnet}.Tests` and those plugins'

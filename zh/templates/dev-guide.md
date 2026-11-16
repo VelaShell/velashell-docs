@@ -44,7 +44,7 @@
 
 ### 2.1 第一方插件在哪儿
 
-官方维护的插件(Redis / S3 / Telnet / 串口 / MongoDB / Docker 面板 / RDP)在
+官方维护的插件(Redis / S3 / Telnet / 串口 / MongoDB / Docker 面板 / RDP / VNC)在
 [VelaShellLabs/velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins),不在主仓库。
 例外是 AI 插件:它住在主仓库 joesdu/VelaShell 的 `plugins/` 下,随主程序同仓构建、同版发布
 (借宿主的 AvaloniaEdit、只能进程内装载,理由见那边的 `plugins/README.md`)。
