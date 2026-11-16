@@ -8,7 +8,7 @@
 > [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli);
 > `dotnet new` 模板在
 > [velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates);
-> Redis / S3 / Telnet / 串口 / MongoDB / Docker 面板 / RDP 插件在
+> Redis / S3 / Telnet / 串口 / MongoDB / Docker 面板 / RDP / VNC 插件在
 > [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins)。
 > 本页(以及 01–15 蓝图)里出现的 `plugin-sdk/…`、`tools/…`、`templates/…` 指前三者,
 > `tests/VelaShell.Plugin.{Redis,S3,Telnet}.Tests` 与那几个插件的源码路径指后者;

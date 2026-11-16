@@ -36,7 +36,7 @@ The host-side implementation lives in the **main repository** [joesdu/VelaShell]
 
 ### 2.1 Where the First-Party Plugins Live
 
-The officially maintained plugins (Redis / S3 / Telnet / Serial / MongoDB / Docker panel / RDP) live in
+The officially maintained plugins (Redis / S3 / Telnet / Serial / MongoDB / Docker panel / RDP / VNC) live in
 [VelaShellLabs/velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins), not in the main repository.
 The exception is the AI plugin: it lives under `plugins/` in the main repository joesdu/VelaShell and is built and
 released with the app (it borrows the host's AvaloniaEdit and can only load in-process; see `plugins/README.md` there).
