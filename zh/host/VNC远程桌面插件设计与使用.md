@@ -22,13 +22,13 @@ English: [VNC plugin: design and use](../../en/host/vnc-plugin-design-and-use.md
 | 协议版本 | RFB 3.3、3.7、3.8(Apple 的 3.889 按 3.8,3.4–3.6 按 3.3) |
 | 安全类型 | None(1)、VNC 认证(2)、VeNCrypt 0.2 的 X.509 TLS 子类型(260 None / 261 VNC / 262 Plain)、Apple 远程桌面(30) |
 | 编码 | Raw、CopyRect、RRE、Hextile、ZRLE、Tight(填充,copy / palette / gradient 过滤器,JPEG) |
-| 伪编码 | ExtendedDesktopSize + SetDesktopSize、DesktopSize、Cursor、LastRect、DesktopName、QEMU Extended Key Event、QEMU Audio、Extended Clipboard、SupportedMessages(启用文件传输时)、JPEG 质量、压缩级别 |
+| 伪编码 | ExtendedDesktopSize + SetDesktopSize、DesktopSize、Cursor、LastRect、DesktopName、QEMU Extended Key Event、QEMU Audio、Extended Clipboard、Continuous Updates + Fence、SupportedMessages(启用文件传输时)、JPEG 质量、压缩级别 |
 | 剪贴板 | 仅双向文本:扩展剪贴板(Notify / Request / Provide)走 UTF-8,否则走 Latin-1 的 ServerCutText / ClientCutText;不支持文件剪贴板 |
 | 音频 | QEMU Audio(QEMU / libvirt 控制台):S16 双声道 44.1 kHz,经 WaveOut / AudioQueue / ALSA 播放 |
 | 文件传输 | UltraVNC 文件传输(UltraVNC Server、`x11vnc -ultrafilexfer`):浏览、上传、下载、新建文件夹、删除、重命名 |
 | 传输 | 宿主网络代理(`INetworkApi`)、宿主管理的 SSH 跳板会话、30 秒 TCP keep-alive |
 
-刻意不支持:匿名 TLS 的 VeNCrypt 子类型 257–259(匿名 Diffie-Hellman 套件,SChannel 与 .NET 的 OpenSSL/Apple TLS 绑定都不提供)、不带 TLS 的 VeNCrypt Plain(256,密码会明文传输)、RA2 / RealVNC 加密(5、6)、UltraVNC MS-Logon、TightVNC 的文件传输协议、整个文件夹的传输、音频输入(麦克风)、24 位以下色深、TightPNG、Continuous Updates 与 Fence。
+刻意不支持:匿名 TLS 的 VeNCrypt 子类型 257–259(匿名 Diffie-Hellman 套件,SChannel 与 .NET 的 OpenSSL/Apple TLS 绑定都不提供)、不带 TLS 的 VeNCrypt Plain(256,密码会明文传输)、RA2 / RealVNC 加密(5、6)、UltraVNC MS-Logon、TightVNC 的文件传输协议、整个文件夹的传输、音频输入(麦克风)、24 位以下色深、TightPNG、Open H.264(编码 50:常见服务器都不发送,只有 neatvnc 在编译时开启并配有 FFmpeg / V4L2 编码器时才有)。
 
 库里的 `VncSession` 实现 `IVncSession` 契约(帧、输入、剪贴板、调整分辨率、显示暂停);插件提供桌面视图、输入队列与剪贴板桥接,并负责把宿主的连接请求映射成库的 `VncClientOptions`、把库抛出的异常翻译成宿主协议异常。宿主管理连接表单、凭据、证书批准、会话标签与可选 SSH 跳板。引擎在进程内运行,与宿主共享崩溃边界。相关契约见 [SDK 参考](../sdk/sdk-reference.md)、[开发指南](../templates/dev-guide.md) 与 [当前信任边界](../plugins/12-security-threat-model.md)。
 
@@ -47,7 +47,9 @@ English: [VNC plugin: design and use](../../en/host/vnc-plugin-design-and-use.md
 
 - **显示尺寸**(`scaling`,「显示」页):默认「匹配窗口」—— 服务器回应了 ExtendedDesktopSize 时(例如 TigerVNC),经 SetDesktopSize 请求把远程桌面调整为标签页的设备像素大小,并沿用服务器给的屏幕 id;窗口停止变化 350 ms 后才发请求,8 px 以内的抖动忽略。不能调整的服务器按比例缩放。「缩放以适应」从不调整远端;「实际大小」1:1 绘制并带滚动条(比视图小时居中)。
 - 桌面与视图相差几个设备像素以内时,按像素网格精确 1:1 绘制、不做滤波;只有真正不匹配时才高质量重采样。
-- 帧在接收线程上解码进 BGRA 帧缓冲,缓冲记录变化矩形的并集;`CopyFrame` 只把这部分拷进锁定的 `WriteableBitmap`。一帧解码完立即请求下一次增量更新。后台标签页或最小化的窗口不再请求更新;重新显示时请求期间累积的变化(由服务器跟踪)。帧投递用 Input 优先级。
+- 帧在接收线程上解码进 BGRA 帧缓冲,缓冲记录变化矩形的并集;`CopyFrame` 只把这部分拷进锁定的 `WriteableBitmap`。帧投递用 Input 优先级。
+- **连续更新**(`continuousUpdates`,高级,默认开):客户端声明 Continuous Updates(-313)与 Fence(-312)伪编码。服务器以一条 EndOfContinuousUpdates(150)确认支持 —— TigerVNC 只对同时支持 Fence 的客户端确认 —— 之后第一帧画面一到,客户端就对整个桌面发送 EnableContinuousUpdates(150),此后服务器在屏幕变化时主动推送,客户端不再逐帧请求;做法与 TigerVNC viewer 相同。服务器发来的 Fence 请求(248)立即原样回传负载:消息严格按序处理,因此保留 BlockBefore / BlockAfter,清掉 SyncNext 与 Request(与 TigerVNC viewer 的应答一致)。TigerVNC 服务器靠这些往返测量延迟、控制推送节奏,高延迟链路上比「每帧一问一答」流畅。桌面尺寸变化时按新尺寸重新开启;服务器自行结束连续更新时退回逐帧请求。不支持的服务器忽略这两个伪编码,仍是一帧解码完立即请求下一次增量更新。关掉此项也回到逐帧请求,仅用于排查问题。
+- 后台标签页或最小化的窗口不再接收更新:连续更新时发送关闭消息,否则不再请求;重新显示时重新开启(或请求),服务器补发期间累积的变化(由服务器跟踪),不做整屏刷新。
 - **画质**(`quality`):高(JPEG 8,默认)/ 中(6)/ 低(2)/ 无损(不用 JPEG)。JPEG 矩形借宿主的 Skia 经 Avalonia `Bitmap` 解码(`VncJpeg`),插件和库都不带图像编解码器。**首选编码**(`encoding`)与**压缩级别**(`compression`,0–9,默认 2)也在「显示」页。
 - 服务器的光标(Cursor 伪编码)替换桌面上的本机指针;空光标即隐藏。
 
@@ -102,7 +104,7 @@ RFB 本身没有文件传输。这里实现的是 UltraVNC 文件传输(消息�
 
 ## 验证
 
-`tests/VelaShell.Plugin.Vnc.Tests` 让真实的 `VncSession` 对接进程内脚本化 RFB 服务器(`FakeVncServer`),由服务器一侧逐字节核对客户端发出的内容:各版本映射、None / VNC / ARD(假服务器解密凭据)/ VeNCrypt X.509 自签证书(先信任提示、再钉扎重连;TLS 内的 Plain 凭据;证书变化),Auto 对只有匿名 TLS 的 VeNCrypt 的回退;DES 对照 FIPS 46-3 已知答案(Windows 上另对照平台实现);每种编码经真实读取器与帧缓冲解码,含畸形数据拒绝;增量请求、keysym 与 QEMU 扫描码消息、两种剪贴板双向、SetDesktopSize 往返、暂停显示、正常关闭 / 重置 / 协议错误;QEMU 音频的确认、set-format 与 enable 的字节、PCM 按序到达输出、设备故障只停音频并发 disable、非整帧缓冲的拒绝、输出跟不上时丢弃而不阻塞;UltraVNC 文件传输对照 LibVNC 与 UltraVNC 两种服务器行为(权限、驱动器与目录列表、Unicode 名称与块大小、压缩与原始包的下载、分块压缩上传、拒绝、取消即中止、命令、超时、不支持的服务器断开连接);插件侧的清单与注册一致、五种语言齐全且占位符一致、设置解析、异常翻译、自动重连规则、headless 界面(含文件面板的浏览、上传覆盖确认、删除确认、下载、重命名校验与错误提示,以及音频状态与故障提示)、经 Skia 解码 JPEG,以及在可回收加载上下文里卸载。
+`tests/VelaShell.Plugin.Vnc.Tests` 让真实的 `VncSession` 对接进程内脚本化 RFB 服务器(`FakeVncServer`),由服务器一侧逐字节核对客户端发出的内容:各版本映射、None / VNC / ARD(假服务器解密凭据)/ VeNCrypt X.509 自签证书(先信任提示、再钉扎重连;TLS 内的 Plain 凭据;证书变化),Auto 对只有匿名 TLS 的 VeNCrypt 的回退;DES 对照 FIPS 46-3 已知答案(Windows 上另对照平台实现);每种编码经真实读取器与帧缓冲解码,含畸形数据拒绝;增量请求、keysym 与 QEMU 扫描码消息、两种剪贴板双向、SetDesktopSize 往返、暂停显示、正常关闭 / 重置 / 协议错误;连续更新与 Fence(声明与关闭、确认后对整个桌面开启且不再请求、无确认时逐帧请求、Fence 应答的标志与负载、尺寸变化后重新开启、隐藏时关闭与显示时重开、服务器自行结束后退回请求);QEMU 音频的确认、set-format 与 enable 的字节、PCM 按序到达输出、设备故障只停音频并发 disable、非整帧缓冲的拒绝、输出跟不上时丢弃而不阻塞;UltraVNC 文件传输对照 LibVNC 与 UltraVNC 两种服务器行为(权限、驱动器与目录列表、Unicode 名称与块大小、压缩与原始包的下载、分块压缩上传、拒绝、取消即中止、命令、超时、不支持的服务器断开连接);插件侧的清单与注册一致、五种语言齐全且占位符一致、设置解析、异常翻译、自动重连规则、headless 界面(含文件面板的浏览、上传覆盖确认、删除确认、下载、重命名校验与错误提示,以及音频状态与故障提示)、经 Skia 解码 JPEG,以及在可回收加载上下文里卸载。
 
 **原版插件的真实服务器观察:**在 Ubuntu 24 的 TigerVNC 1.13.1 上,发送类型 7 后服务器报 `unknown message type 7`,桌面连接随即断开。这是原有兼容问题的证据,不代表修复已验证。**本次修复尚未构建、运行测试或进行真实客户端/服务器验证**:本次更新时工具不提供本地命令执行能力。上文列出的是测试范围,不是测试通过记录。
 
