@@ -13,18 +13,22 @@ English: [VNC plugin: design and use](../../en/host/vnc-plugin-design-and-use.md
 - **Wire** —— 带缓冲的大端读写(`RfbReader` / `RfbWriter`);每条客户端消息一次写出。
 - **Security** —— 托管 DES 与 VNC 认证、Apple 远程桌面、带证书钉扎的 VeNCrypt TLS(`VncTls`)。
 - **Graphics** —— `VncFramebuffer`(越界检查、记录变化区域的 BGRA 帧缓冲)与 `RectangleDecoder`(全部编码;持续的 zlib 流在 `ZlibChannel` 里:ZRLE 一条、Tight 四条,服务器对每个矩形做 sync flush)。
-- **VncSession** —— 握手、接收循环、输入、剪贴板(`ExtendedClipboard`)、调整分辨率。
+- **Audio** —— QEMU 音频的播放器(`VncAudioPlayer`)与三平台 PCM 输出(与 RDP 插件同一份实现)。
+- **FileTransfer** —— UltraVNC 文件传输(`UltraFileTransfer`)。
+- **VncSession** —— 握手、接收循环、输入、剪贴板(`ExtendedClipboard`)、调整分辨率,以及音频与文件传输消息的分派。
 
 | 方面 | 支持 |
 | --- | --- |
 | 协议版本 | RFB 3.3、3.7、3.8(Apple 的 3.889 按 3.8,3.4–3.6 按 3.3) |
 | 安全类型 | None(1)、VNC 认证(2)、VeNCrypt 0.2 的 X.509 TLS 子类型(260 None / 261 VNC / 262 Plain)、Apple 远程桌面(30) |
 | 编码 | Raw、CopyRect、RRE、Hextile、ZRLE、Tight(填充,copy / palette / gradient 过滤器,JPEG) |
-| 伪编码 | ExtendedDesktopSize + SetDesktopSize、DesktopSize、Cursor、LastRect、DesktopName、QEMU Extended Key Event、Extended Clipboard、JPEG 质量、压缩级别 |
+| 伪编码 | ExtendedDesktopSize + SetDesktopSize、DesktopSize、Cursor、LastRect、DesktopName、QEMU Extended Key Event、QEMU Audio、Extended Clipboard、JPEG 质量、压缩级别 |
 | 剪贴板 | 双向文本:扩展剪贴板(Notify / Request / Provide)走 UTF-8,否则走 Latin-1 的 ServerCutText / ClientCutText |
+| 音频 | QEMU Audio(QEMU / libvirt 控制台):S16 双声道 44.1 kHz,经 WaveOut / AudioQueue / ALSA 播放 |
+| 文件传输 | UltraVNC 文件传输(UltraVNC Server、`x11vnc -ultrafilexfer`):浏览、上传、下载、新建文件夹、删除、重命名 |
 | 传输 | 宿主网络代理(`INetworkApi`)、宿主管理的 SSH 跳板会话、30 秒 TCP keep-alive |
 
-刻意不支持:匿名 TLS 的 VeNCrypt 子类型 257–259(匿名 Diffie-Hellman 套件,SChannel 与 .NET 的 OpenSSL/Apple TLS 绑定都不提供)、不带 TLS 的 VeNCrypt Plain(256,密码会明文传输)、RA2 / RealVNC 加密(5、6)、UltraVNC MS-Logon、文件传输、音频、24 位以下色深、TightPNG、Continuous Updates 与 Fence。
+刻意不支持:匿名 TLS 的 VeNCrypt 子类型 257–259(匿名 Diffie-Hellman 套件,SChannel 与 .NET 的 OpenSSL/Apple TLS 绑定都不提供)、不带 TLS 的 VeNCrypt Plain(256,密码会明文传输)、RA2 / RealVNC 加密(5、6)、UltraVNC MS-Logon、TightVNC 的文件传输协议、整个文件夹的传输、音频输入(麦克风)、24 位以下色深、TightPNG、Continuous Updates 与 Fence。
 
 库里的 `VncSession` 实现 `IVncSession` 契约(帧、输入、剪贴板、调整分辨率、显示暂停);插件提供桌面视图、输入队列与剪贴板桥接,并负责把宿主的连接请求映射成库的 `VncClientOptions`、把库抛出的异常翻译成宿主协议异常。宿主管理连接表单、凭据、证书批准、会话标签与可选 SSH 跳板。引擎在进程内运行,与宿主共享崩溃边界。相关契约见 [SDK 参考](../sdk/sdk-reference.md)、[开发指南](../templates/dev-guide.md) 与 [当前信任边界](../plugins/12-security-threat-model.md)。
 
@@ -57,6 +61,28 @@ English: [VNC plugin: design and use](../../en/host/vnc-plugin-design-and-use.md
 - **远程按键悬浮球**(与 RDP 同一组件):Ctrl+Alt+Del、Alt+Tab、Alt+F4、键入剪贴板;外圈 Super、Win+R、Win+L、PrintScreen。「键入剪贴板」把本机剪贴板文本逐字键入(超过 100 字符或含换行需确认,超过 2000 字符拒绝)。
 - **仅查看**(`viewOnly`)不发送键盘、指针或剪贴板数据,并隐藏远程按键悬浮球。
 
+## 音频
+
+- **播放远程声音**(`audio`,默认关,与 RDP 插件一致)。开启后客户端在 SetEncodings 里声明 QEMU Audio 伪编码(-259);服务器用一个编码为 -259 的矩形确认后(QEMU 在其中填桌面尺寸,没有意义),客户端先发 set-format(有符号 16 位、双声道、44.1 kHz),再发 enable。目前只有 QEMU / libvirt 控制台实现这个扩展,其他服务器忽略该伪编码。
+- 样本按 QEMU 的默认字节序(小端)解读。PCM 输出与 RDP 插件同一份实现(Windows WaveOut、macOS AudioQueue、Linux ALSA,经 `LibraryImport` 调系统库),源码复制进库的 `Audio/` 目录 —— 插件各自分发,不能共享程序集。
+- 接收线程只把数据交给播放器,从不阻塞:播放器攒成 40 ms 一段,输出端最多排 8 段(约 320 ms),延迟有上限。网络送得比设备播得快(时钟漂移、卡顿后的突发)时丢弃最新的数据 —— QEMU 自己在背压时也丢音频。
+- 输出设备出错只停音频:状态栏提示一次(悬停状态栏可再看),并发 disable 让服务器停止采集;桌面不受影响。音频缓冲不是整帧时同样只停音频(跳过这段数据,流保持同步);超过 1 MiB 按协议错误处理。
+- 音频启用时状态栏显示「声音」。
+
+## 文件传输
+
+RFB 本身没有文件传输。这里实现的是用得最广的 UltraVNC 文件传输(消息类型 7):UltraVNC Server 和以 `-ultrafilexfer` 启动的 x11vnc(LibVNC)支持;TigerVNC、QEMU、macOS 屏幕共享都没有。
+
+- **文件传输**(`fileTransfer`,默认关)。不支持的服务器收到类型 7 会直接断开连接(TigerVNC 视为未知消息,LibVNC 未开启时丢弃客户端),所以默认关,并且只在用户打开文件面板时才发出请求。此时连接被关闭会报告为「服务器不支持文件传输」(`VncFileTransferUnsupportedException`):不算网络断开、不自动重连,提示里说明如何关掉此项或在服务器上开启。「仅查看」时不提供文件传输。
+- **权限**:以 version 2 的 AbortFileTransfer 请求(version 0 是两种服务器都拒绝的旧握手),服务器回 FileTransferAccess(1 允许、-1 拒绝)。UltraVNC 随后发送协议版本消息:版本 ≥ 3 时客户端发 SessionStart;≥ 4 时路径与文件名走 Unicode(请求里置 0x80 标志,目录项为 UTF-16),并采用服务器给的块大小。LibVNC 不发版本消息,块大小为 8 KiB —— 它把每个上传包解压进 8192 字节的缓冲。
+- **路径**一律是 Windows 形式(`C:\dir\file`),以 UTF-8 发送。LibVNC 只报告一个驱动器 `C:`,并把 `C:\` 映射到 `/`,所以在 Linux 服务器上从根目录开始浏览。
+- 协议没有请求 id,所以一次只运行一个操作,应答都路由给它;没有操作在运行时到达的消息直接丢弃;一个操作中途失败(超时、取消、出错)后,下一个操作先丢弃到达的消息,直到服务器安静 500 ms,免得上一个操作迟到的应答被当成自己的。每个应答等 30 秒;权限请求等 15 秒,超时按拒绝处理(UltraVNC 对仅查看的会话不应答)。取消只在两条消息之间生效,不会把写到一半的包截断(那会让服务器读乱整条连接)。
+- 文件头大小为 -1 既可能是「打不开」,也可能是低 32 位恰好全 1 的大文件;后者的消息体带时间戳,客户端据此区分,并照常读取高位字。**下载**请求压缩包(服务器只在压缩后更小时才压缩),逐包写入本地文件,收到 EndOfFile 结束;收到的字节少于文件头声明的大小算失败(LibVNC 的文件头只有 32 位大小,所以多了不算错)。**上传**先发 Offer(`路径,MM/DD/YYYY HH:MM`,后跟 4 字节高位大小),等到 FileAcceptHeader 后按块发送,可压缩的块压缩后再发,最后发 EndOfFile。取消或本地文件出错时向服务器发 AbortFileTransfer。
+- **新建文件夹、删除、重命名**走 Command / CommandReturn。UltraVNC 删除文件夹会连同其中内容一起删除,LibVNC 只能删除空文件夹;删除文件夹的确认文字写明了这一点。
+- 服务器数据同样不可信:消息体超过 2 MiB、解压后的包超过 1 MiB、单个目录超过 10 万项、畸形的驱动器列表,都以协议错误结束会话。
+
+**文件面板**:状态栏右侧的文件夹按钮打开右侧 320 px 的面板(几何取自宿主:36 px 头、26 px 路径条、28 px 行、24 px 状态条)。首次打开时请求权限并列出驱动器,只有一个驱动器(LibVNC)时直接进入。头部是上一级、刷新、新建文件夹、上传;路径条右侧是对选中项的下载、重命名、删除。双击或回车进入文件夹、下载文件,Backspace 返回上一级,Delete 删除。把本机文件拖到面板上即上传到当前文件夹。删除确认、覆盖确认与输入名称都在面板内联完成,不弹对话框。上传时遇到同名文件整批确认一次,并先删除旧文件再上传 —— 否则 UltraVNC 会当作断点续传。文件夹不能整体上传或下载。下载失败或取消时删除不完整的本地文件。本地文件经宿主窗口的系统选择器选取(插件在进程内运行,做法与 Docker 面板相同),插件只读写用户选中的文件;清单为此声明了 `fs.local.read` / `fs.local.write`。
+
 ## 连接生命周期
 
 - 网络断开(重置、超时)时按退避自动重连(1、2、4、8、15、30 秒,共 20 次);密码或证书变化时立即停止。
@@ -69,6 +95,6 @@ English: [VNC plugin: design and use](../../en/host/vnc-plugin-design-and-use.md
 
 ## 验证
 
-`tests/VelaShell.Plugin.Vnc.Tests` 让真实的 `VncSession` 对接进程内脚本化 RFB 服务器(`FakeVncServer`),由服务器一侧逐字节核对客户端发出的内容:各版本映射、None / VNC / ARD(假服务器解密凭据)/ VeNCrypt X.509 自签证书(先信任提示、再钉扎重连;TLS 内的 Plain 凭据;证书变化),Auto 对只有匿名 TLS 的 VeNCrypt 的回退;DES 对照 FIPS 46-3 已知答案(Windows 上另对照平台实现);每种编码经真实读取器与帧缓冲解码,含畸形数据拒绝;增量请求、keysym 与 QEMU 扫描码消息、两种剪贴板双向、SetDesktopSize 往返、暂停显示、正常关闭 / 重置 / 协议错误;插件侧的清单与注册一致、五种语言齐全且占位符一致、设置解析、异常翻译、自动重连规则、headless 界面、经 Skia 解码 JPEG,以及在可回收加载上下文里卸载。
+`tests/VelaShell.Plugin.Vnc.Tests` 让真实的 `VncSession` 对接进程内脚本化 RFB 服务器(`FakeVncServer`),由服务器一侧逐字节核对客户端发出的内容:各版本映射、None / VNC / ARD(假服务器解密凭据)/ VeNCrypt X.509 自签证书(先信任提示、再钉扎重连;TLS 内的 Plain 凭据;证书变化),Auto 对只有匿名 TLS 的 VeNCrypt 的回退;DES 对照 FIPS 46-3 已知答案(Windows 上另对照平台实现);每种编码经真实读取器与帧缓冲解码,含畸形数据拒绝;增量请求、keysym 与 QEMU 扫描码消息、两种剪贴板双向、SetDesktopSize 往返、暂停显示、正常关闭 / 重置 / 协议错误;QEMU 音频的确认、set-format 与 enable 的字节、PCM 按序到达输出、设备故障只停音频并发 disable、非整帧缓冲的拒绝、输出跟不上时丢弃而不阻塞;UltraVNC 文件传输对照 LibVNC 与 UltraVNC 两种服务器行为(权限、驱动器与目录列表、Unicode 名称与块大小、压缩与原始包的下载、分块压缩上传、拒绝、取消即中止、命令、超时、不支持的服务器断开连接);插件侧的清单与注册一致、五种语言齐全且占位符一致、设置解析、异常翻译、自动重连规则、headless 界面(含文件面板的浏览、上传覆盖确认、删除确认、下载、重命名校验与错误提示,以及音频状态与故障提示)、经 Skia 解码 JPEG,以及在可回收加载上下文里卸载。
 
-**尚未对接真实服务器验证。** 投入使用前至少连接 TigerVNC(`Xvnc -SecurityTypes VncAuth,X509Vnc`)、x11vnc、一个 QEMU/libvirt 控制台和 macOS 屏幕共享,检查登录、各首选编码下的画面、匹配窗口调整、非美式布局下的键入,以及双向剪贴板。
+**尚未对接真实服务器验证。** 投入使用前至少连接 TigerVNC(`Xvnc -SecurityTypes VncAuth,X509Vnc`)、x11vnc、一个 QEMU/libvirt 控制台和 macOS 屏幕共享,检查登录、各首选编码下的画面、匹配窗口调整、非美式布局下的键入,以及双向剪贴板。音频要在带音频后端的 QEMU 虚拟机上试听;文件传输要对 UltraVNC Server(Windows)和 `x11vnc -ultrafilexfer` 各做一遍浏览、上传、下载、覆盖、删除、重命名、中文文件名和取消。
