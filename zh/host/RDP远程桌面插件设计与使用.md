@@ -136,9 +136,23 @@ UDP-R 使用 `SslStream`，不增加原生库。隧道必须匹配主 TLS 连接
 
 启动和欠载恢复时采用 20–80ms 自适应预缓冲,依据到达间隔与音频时长的偏差估计抖动;孤立短音效也会在有限等待后播放。持续播放时根据设备播放时钟与待播时长做慢速反馈,通过 PCM8/PCM16 线性插值与跨块的小数帧累计修正采样数量,速率修正限制为 ±0.5%,抑制发送端与输出设备时钟偏差造成的长期积压或欠载。格式切换、关闭和欠载恢复重置漂移控制状态。PCM 不重新压缩,但漂移校正会改变采样数量;这不是视频时钟同步,也不保证消除网络、服务器分块或设备自身的延迟。真实远端、扬声器听音、设备热插拔和长时间音画同步仍需在各平台现场验证。
 
+### Windows 组合键(Windows 本机)
+
+Windows 本机的资源管理器会在应用程序之前处理 Windows 键,以前单按 Win 会让本机和远端的开始菜单一起弹出([velashell-plugins#174](https://github.com/VelaShellLabs/velashell-plugins/issues/174))。「体验」页的 **Windows 组合键**(`windowsKeys`)对应 mstsc 的「应用 Windows 组合键」与 RDCMan 的同名选项:
+
+| 值 | 行为 |
+| --- | --- |
+| `remote`(默认) | 远程桌面在活动窗口中获得键盘焦点时,组合键只发给远端 |
+| `fullscreen` | 仅当宿主窗口全屏时同 `remote`,否则同 `local` |
+| `local` | 只由本机处理,远端收不到 Windows 键(可用远程按键悬浮球发送) |
+
+发给远端时,插件在 UI 线程上安装 `WH_KEYBOARD_LL` 低级键盘钩子,只在「桌面获得焦点 + 宿主窗口激活 + 模式要求」同时成立期间存在,失焦、窗口失活、切换标签、退出全屏或关闭时立即卸下,并在远端释放仍按住的键。钩子只截这些键,截下的在本机吞掉、按扫描码送往远端:左右 Win 键及按住 Win 期间按下的所有键、Alt+Tab / Alt+Shift+Tab、Alt+Esc、Ctrl+Esc、Ctrl+Shift+Esc。其他按键(含 Alt 本身、文字、输入法、死键)仍走原来的 Avalonia 路径。开始捕获一个新按键前会核对宿主窗口仍是前台窗口;已经截下的按键,其抬起事件即使在窗口失去前台后也照样截下并送往远端,远端不会粘键。Ctrl+Alt+Del 与 Win+L 由系统安全机制保留,钩子拦不住,仍用悬浮球发送。`local` 模式以及钩子未安装时,Windows 键(含按住 Win 时的其他键)不再从普通按键路径转发,只由本机处理。
+
+仅 Windows 声明此设置:macOS 已把 Command 按 Ctrl 发送,本机没有争抢 Windows 键的开始菜单;Linux 桌面没有统一的等价机制(X11 抓取与 Wayland 快捷键抑制协议归宿主工具包所有,插件无从安装)。从 Windows 同步过去的取值照常解析但不生效。离线测试覆盖捕获规则、模式与窗口状态、设置解析与声明;设置 `VELA_RDP_KEYBOARD_HOOK_TEST=1` 可在 Windows 交互桌面上运行 `RdpWindowsKeysTests.RealHookCapturesInjectedWindowsKeys`,它安装真实钩子并用 SendInput 注入 Win、Win+F24,验证按键全部转给远端且本机未看到 Win 键。该测试已在 Windows 11 本机通过;与真实 Windows 服务器的端到端操作仍需现场验收。
+
 ### 远程按键悬浮球
 
-插件不装全局键盘钩子,所以本机系统会先截走的组合键按了也到不了远端:Ctrl+Alt+Del 总由本机处理,Win+L 锁的是本机,Ctrl+Shift+Esc 打开本机任务管理器,Alt+Tab 切换本机窗口,Win+R / Win+D 由本机资源管理器处理,单按 Win 会让本机和远端的开始菜单一起弹出,Windows 11 的 PrintScreen 默认打开本机截图工具。这些键收在桌面边缘的**远程按键悬浮球**里:
+本机系统会先截走的一些组合键按了到不了远端:Ctrl+Alt+Del 总由本机处理,Win+L 锁的是本机,Windows 11 的 PrintScreen 默认打开本机截图工具;在 macOS / Linux 上,以及 Windows 上「Windows 组合键」不发给远端时,Ctrl+Shift+Esc、Alt+Tab、Win、Win+R / Win+D 等也由本机处理。这些键收在桌面边缘的**远程按键悬浮球**里:
 
 - 平时是一个半透明圆球,默认贴在右边缘;可拖动,松手后吸附到较近的左/右边缘并记住高度。
 - 描边用主题强调色(`VelaAccent`,跟随用户自定义的强调色):悬停时强调色描边淡入并向外扩出一圈光晕;展开时键盘图标旋转淡出、换成 ×,× 悬停时再转四分之一圈并铺上半透明强调色底;扇形里的按钮悬停时放大 8% 并亮起强调色描边。
