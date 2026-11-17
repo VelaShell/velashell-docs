@@ -238,6 +238,74 @@ jobs:
           path: bin/vpx/*.vpx
 ```
 
+### 5.4 Publishing to the marketplace straight from CI (trusted publishing)
+
+If you don't want to upload by hand on every release, let GitHub Actions push the `.vpx` to the
+marketplace directly. This uses **trusted publishing** (the same mechanism as PyPI's Trusted Publishing):
+CI holds **no marketplace secret at all**. It asks GitHub for an OIDC token that is valid only for this run
+and expires within minutes, and the marketplace checks that the repository, workflow and environment in
+that token match what you registered. The package then goes through quarantine, signature checks and the
+virus scan exactly like a manual upload.
+
+**One-time setup:**
+
+1. **Upload the first version by hand.** Trusted publishing only publishes new versions of an existing plugin;
+   it never claims a new id — who owns a plugin id must be decided by a signed-in person.
+2. On the marketplace's "My plugins" page, click **Trusted publishing** for the plugin and register:
+   - **GitHub repository**: `owner/repo`. The marketplace looks up the repository's numeric id on GitHub and
+     matches on that id from then on — renaming the repository is fine, while someone recreating a deleted
+     repository under the same name will not match. Private repositories can only be registered if the
+     marketplace is configured with a GitHub token.
+   - **Workflow file**: the file name under `.github/workflows/`, e.g. `release.yml` (case-sensitive).
+   - **Environment** (optional, **strongly recommended**): e.g. `market`. Without it, anyone with write access
+     to the repository can publish by pushing a branch that edits this workflow. With it, go to the repository's
+     Settings → Environments and add required reviewers, or allow only `v*` tags to deploy to it.
+
+   If one repository publishes several plugins, tick the others under "Also register for".
+
+**Add a job to the workflow** (after the `pack` job from 5.3):
+
+```yaml
+  publish-market:
+    needs: pack
+    runs-on: ubuntu-latest
+    environment: market          # must match the registered environment; drop it if you registered none
+    permissions:
+      id-token: write            # required to request the OIDC token
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: vpx, path: dist }
+
+      - name: Publish to VelaShell market
+        shell: bash
+        run: |
+          for vpx in dist/*.vpx; do
+            token=$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=velashell-market" | jq -r .value)
+            status=$(curl -sS -o resp.json -w '%{http_code}' -H "Authorization: Bearer $token" \
+              -F "file=@$vpx" -F "releaseNotes=Release notes (Markdown, optional)" \
+              https://market.easilynet.top/api/uploads/trusted)
+            case "$status" in
+              202) echo "$vpx is in quarantine; it publishes automatically once the checks pass" ;;
+              409) echo "$vpx: this version is already published, skipping" ;;
+              *)   cat resp.json; exit 1 ;;
+            esac
+          done
+```
+
+| Status | Meaning |
+| --- | --- |
+| `202` | In quarantine; published automatically once the checks pass. See the result under "My uploads" |
+| `409` | This version is already published. This is what a rerun of the same tag gets; treat it as success |
+| `403` | No trusted publisher matches the token: check the repository, the workflow file name (case-sensitive) and the environment |
+| `404` | The plugin does not exist on the marketplace yet: upload the first version by hand |
+| `401` | Invalid token — usually the `audience` is not `velashell-market`, or the job lacks `id-token: write` |
+
+The authoritative `audience` is the one shown in the marketplace's "Trusted publishing" drawer (a self-hosted
+marketplace may have changed it). The first-party plugin repository velashell-plugins uses exactly this; see
+the `publish-market` job in its `.github/workflows/release.yml`.
+
 ---
 
 ## 6. Pre-release checklist
