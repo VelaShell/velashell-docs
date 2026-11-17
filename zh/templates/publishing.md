@@ -234,6 +234,67 @@ jobs:
 `vela-plugin doctor` 在 CI 里同样可用(有阻断性问题时退出码 1),但它需要一份宿主才能
 核对版本闸;CI 上没有宿主时它只做工程侧检查。
 
+### 5.4 从 CI 直接推进商店(可信发布)
+
+不想每次发版都手动上传,可以让 GitHub Actions 直接把 `.vpx` 推进商店。用的是**可信发布**
+(与 PyPI 的 Trusted Publishing 同一机制):CI 里**不存任何商店密钥**,而是向 GitHub 申请一枚
+只对这次运行有效、几分钟即过期的 OIDC 令牌,商店核对令牌里的仓库、工作流与环境是不是你登记过的。
+包推进去之后照样进隔离区、过签名校验与病毒扫描,与手动上传完全一样。
+
+**一次性准备:**
+
+1. **首个版本手动上传。** 可信发布只给已有插件发新版本,不认领新 id —— 插件 id 归谁,必须是登录的人决定的。
+2. 在商店「我的插件」里点该插件的 **可信发布**,登记:
+   - **GitHub 仓库**:`owner/repo`。商店会向 GitHub 查出仓库的数字 id 存下,以后按 id 匹配 ——
+     仓库改名不受影响,被删后有人同名重建则过不去。私有仓库需要商店配置了 GitHub 令牌才能登记。
+   - **工作流文件**:`.github/workflows/` 下的文件名,如 `release.yml`,区分大小写。
+   - **部署环境**(可选,**强烈推荐**):如 `market`。不填的话,任何有仓库写权限的人推个分支改这个工作流就能发版;
+     填了之后,再到 GitHub 仓库的 Settings → Environments 给该环境设审批人,或限定只允许 `v*` 标签部署。
+
+   一个仓库发多个插件时,在「同时登记到」里把其余插件一起勾上即可。
+
+**工作流里加一个任务**(接在 5.3 的 `pack` 之后):
+
+```yaml
+  publish-market:
+    needs: pack
+    runs-on: ubuntu-latest
+    environment: market          # 与登记的环境一致;没登记环境就删掉这行
+    permissions:
+      id-token: write            # 申请 OIDC 令牌必需
+      contents: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { name: vpx, path: dist }
+
+      - name: Publish to VelaShell market
+        shell: bash
+        run: |
+          for vpx in dist/*.vpx; do
+            token=$(curl -sSf -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=velashell-market" | jq -r .value)
+            status=$(curl -sS -o resp.json -w '%{http_code}' -H "Authorization: Bearer $token" \
+              -F "file=@$vpx" -F "releaseNotes=更新说明(Markdown,可选)" \
+              https://market.easilynet.top/api/uploads/trusted)
+            case "$status" in
+              202) echo "$vpx 已进隔离区,检测通过后自动发布" ;;
+              409) echo "$vpx 该版本已发布,跳过" ;;
+              *)   cat resp.json; exit 1 ;;
+            esac
+          done
+```
+
+| 返回 | 含义 |
+| --- | --- |
+| `202` | 已进隔离区,检测通过后自动发布。结果在商店「我的上传」里看 |
+| `409` | 该版本已发布。重跑同一个标签时就是这种情况,可以当成功处理 |
+| `403` | 没有与令牌匹配的可信发布者:核对仓库、工作流文件名(区分大小写)与环境 |
+| `404` | 商店里还没有这个插件:先手动上传首个版本 |
+| `401` | 令牌无效,常见原因是 `audience` 不是 `velashell-market`,或 job 缺了 `id-token: write` |
+
+`audience` 以商店「可信发布」抽屉里显示的为准(自行部署的商店可能改过)。
+第一方插件仓库 velashell-plugins 的发布流水线用的就是这套,见它的 `.github/workflows/release.yml` 里的 `publish-market` 任务。
+
 ---
 
 ## 6. 发布前检查清单
