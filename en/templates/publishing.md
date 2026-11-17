@@ -259,7 +259,9 @@ virus scan exactly like a manual upload.
    - **Workflow file**: the file name under `.github/workflows/`, e.g. `release.yml` (case-sensitive).
    - **Environment** (optional, **strongly recommended**): e.g. `market`. Without it, anyone with write access
      to the repository can publish by pushing a branch that edits this workflow. With it, go to the repository's
-     Settings → Environments and add required reviewers, or allow only `v*` tags to deploy to it.
+     Settings → Environments and add required reviewers, or allow only release tags to deploy to it —
+     the rule must match your tag format: `[0-9]*.[0-9]*.[0-9]*` for tags like `1.2.3`, `v*` only for `v1.2.3`.
+     A wrong rule raises no error; it just blocks every release at the environment.
 
    If one repository publishes several plugins, tick the others under "Also register for".
 
