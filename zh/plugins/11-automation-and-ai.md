@@ -263,6 +263,22 @@ AI 审批与宿主上传确认是独立两层：宿主在读取文件内容与�
 - **开跑前确认计划**：`team_run` 先校验，再经 `ConfirmPlanAsync` 用同一审批处理器弹出「组建团队」审批卡（`DescribePlan`：目标、成员 ✎ / >_、任务 ← 依赖 ⟲ 审查），「全部自动」放行，可「本次会话总是允许」。拒绝**不是本轮停止边界**，只把「用户没同意这个计划」退回给主模型。IM 中以审批消息发出。
 - **界面**：团队卡依次是目标与阶段芯片、成员头像（身份色使用宿主转发的 `VelaShellCyan` / `Blue` / `Magenta` / `Yellow` / `Green` 及 `Dim` 变体，与状态语义色分开）与进度、全队 token 与合计预计花费、任务卡（左侧负责人身份色头像、右上状态图标；正文为标题 / 角色（身份色）+ 实际模型 · 思考强度 / 当前动作、等待、审查结论、返工与右对齐的「上下文占用% · token ≈费用 · 耗时」/ 身份色进度条（完成满格、运行中不定进度、失败红色）；点开为该次运行卡片。费用按各次运行所用模型的单价估算，缓存命中按缓存价，依赖 `SubagentSnapshot.CachedInputTokens` 与最近一次请求输入 `ContextTokens`）、按分派 / 汇报 / 协作 / 系统分色的团队消息（默认收起，「谁 → 谁」同样用简写圈，主控 / 全体 / 引擎用中性色短字）。编排器在一轮收尾释放时，只有尚未落定的团队才记为已取消。团队任务的运行卡片只在团队卡中显示。看板随 `ChatTurnMeta.Team` 入库，报告与消息截短，未落定的按已取消保存。
 
+### 1.15 省 Token 的文件工具与改动对比（2026-11-16）
+
+原先读文件只能整份取回、没有任何内容搜索工具，改同一文件的几处要调用几次 patch，模型为看几十行就要拉回整份文件。
+
+- **分段读取**：`read_local_file` / `read_remote_file` 增加 `offset`（起始行，1 起）与 `limit`（默认且最多 2000 行），输出 `行号\t内容`，截断时注明总行数与下一次的 `offset`；工具描述要求模型不要把行号前缀抄进 `oldText` / `content`。本地按行流式读取，大小上限只约束返回文本总量；远端用 SDK 2.2.0 已有的 `IRemoteFs.OpenReadAsync` 顺序流按区间读，开流失败时退回 `ReadAllBytesAsync`（仍是 256KB 上限）。含 NUL 的文件按二进制拒绝。
+- **内容搜索（只读、免审批）**：`search_local_files(pattern, isRegex, path, glob, contextLines, maxMatches, ignoreCase, workspaceId)` 输出 `相对路径:行号: 内容`，跳过二进制、大于 16MB 的文件与 `.git` / `node_modules` / `bin` / `obj` 等目录，不跟进符号链接与目录联接，起点路径照常经 `LocalPathScope` 校验，正则单次匹配超时 1 秒；`find_local_files` 按 `*` / `**` / `?` / `{a,b}` 找文件。`search_remote_files` 在远端执行一条**由工具自己拼装**的 `grep -rnIsH`：模型给的每个值都整体单引号转义，pattern 经 `-e` 传入、路径放在 `--` 之后，拼不出第二条命令也伪造不了选项，所能读到的不超过本来就免审批的 `read_remote_file`，因此不走审批；超时 30 秒（远端 grep 进程不保证随之退出），默认对端是 POSIX shell。
+- **多处编辑**：`patch_local_file` / `patch_remote_file` 增加 `replaceAll` 与 `edits[{oldText, newText, replaceAll}]`，按顺序应用，任何一处不匹配则整体不写，一次调用只审批一次；旧参数名保留，历史回放不受影响。
+- **改动事件**：`AgentToolbox.FileChanged`（`Action<FileChange>`）在本地与远端的写入、修补、删除文件、重命名文件成功后同步触发，带改动前后全文（超出上限或非 UTF-8 为空）；`Location` 为 `local:<workspaceId>` / `remote:<sessionId>`。目录操作不发事件；订阅方异常不影响工具结果；子 Agent 工具箱沿用父工具箱的订阅。
+- **界面**：工具卡按类别显示图标（`ToolIcons` 按工具名精确映射，MCP 等外部工具为插头），状态图标移到右侧；修改文件的卡片头部显示 `+N −M`，展开为插件内 Myers 行级 diff（`LineDiff`）画出的统一差异（行号、增删着色、只留改动附近 3 行）。增删底色用主题令牌 `VelaStatusConnected` / `VelaError` 叠低透明度，随 12 套命名主题派生，不新增令牌。输入框上方的「N 个文件已更改」条汇总本段对话的 `FileChange`（同一文件合并，Before 取首次、After 取末次），点文件经 `IUiApi.ShowPanelAsync`（`PanelDisplayMode.Document`）在主窗口标签区打开对比文档：默认左右并排、可切内联、上一处 / 下一处导航；同一文件复用已开标签并就地刷新，打开失败时退回独立窗口。列表按对话隔离，不入库。
+- **第二轮（2026-11-17）**：
+  - **宿主路由**：宿主原先把 AI 插件的所有 Document 请求都送进专属区，聊天面板占着时对比标签打不开，只能退回小窗；现在只有 `Placement = Right` 且专属区空着才进专属区，见 [`08-ui-extensions.md`](08-ui-extensions.md)。对比标签开新的之前先 `ActivateAsync` 已开的那个，保证落在同一组；退回窗口占工作区的 90%。
+  - **语法高亮**：`TextMateHighlighter` 用与宿主共享的 TextMateSharp，主题与聊天代码块一致（DarkPlus / LightPlus），对完整的旧 / 新文本带状态逐行 tokenize，设有行数、行长和耗时上限，超出退回纯文本。
+  - **可编辑**：并排模式改为两个 AvaloniaEdit 编辑器，右侧可编辑，防抖 300ms 重算 diff。
+  - **保存**：`FileTextStore` 先读当前文件（本地经 `LocalPathScope`、远端先确认会话在线），内容和基线不一致时让用户选覆盖 / 重新载入 / 取消；写入保留 BOM，换行统一成原文件占多数的那种；不走 Agent 审批。只有片段时提供「载入完整文件」，倒着套用 patch 重建旧内容。
+  - **限制**：SDK 没有关闭前的钩子，关闭有未保存修改的标签不会拦截。
+
 ## 2. AI 网关(S3,远期主线)
 
 ### 2.1 为什么是"网关"而不是"每个插件自带 SDK 调模型"
