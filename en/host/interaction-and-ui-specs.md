@@ -1144,7 +1144,7 @@ Right-click a session row in the sidebar to open it (200px, `bg-surface`, corner
 - Connect / Disconnect
 - Open in New Tab / Open in New Window
 - Edit Connection (opens the §13 form with fields prefilled)
-- Duplicate Session / Copy Address
+- Duplicate Connection / Copy IP/Domain (copies only the IP or domain typed into Host, trimmed, without port or username; hidden for connections with no host, such as some plugin protocols)
 - Pin to Top / Unpin (the label follows the current state; a pinned row is hoisted to the very top of the tree, see §4)
 - Join Sync Group
 - Open SFTP
@@ -1274,6 +1274,11 @@ Since 2026-09-30 the dialog is a “protocol rail on the left + paged form on th
       and the three buttons stay disabled. Profiles store only the bare address: with brackets it would go to the server verbatim through
       a jump host, and its host keys would be recorded as a different machine from the bare address. Everywhere `host:port` is shown,
       IPv6 is bracketed.
+    - **Port in the Host field**: while the Port field is shown, a Host of `192.168.1.1:22`, `example.com:2222` or `[2001:db8::1]:2222`
+      is split as soon as the Host field loses focus — the port moves into Port and only the IP or domain stays in Host (not on every
+      keystroke: typing `host:2` would be split right away and the following digits would land back in Host). Saving without leaving
+      the field splits it the same way before storing. Only "one colon followed by a number in 1–65535" is split: unbracketed IPv6,
+      serial device names, SQLite file paths (`C:\…`), plugin URLs and out-of-range ports are left exactly as typed.
   - **Authentication** (hidden for protocols declaring `NoCredentials`; a username and password typed before it was hidden are not saved with the profile and never handed to the plugin when connecting, nor are those left in an older profile): a full-width single-row segmented control below the username (Password / Key / Certificate / Agent / Tailscale SSH / Key store, in `AuthMethod` enum order; the key store segment is shown only on Windows, see below). FTP keeps its encryption mode to the right of the username; plugin protocols leave that slot empty.
     Below come FTP's anonymous login / passive mode, the plaintext-FTP warning, the password or certificate + private
     key + passphrase, the Agent explanation, the key store picker, and remember password.
