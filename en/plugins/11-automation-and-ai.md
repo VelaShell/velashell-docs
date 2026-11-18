@@ -308,6 +308,15 @@ In a long reply, the part the user must not miss is often one or two sentences, 
 - **UI**: collapsible (expanded by default), an icon and semantic color per kind, dismissible one by one or all at once; no tool card is shown for the tool in the reply. The bar is cleared or switched along with new, switched or loaded conversations.
 - **Scope**: Chat mode offers no tools; the IM bridge and the external MCP server have no bar and do not get the tool. It is registered in the built-in tool catalog (read-only) so it can be disabled under "Configure tools".
 
+### 1.17 Skills (2026-11-18)
+
+A skill is a set of instructions for the AI on how to do a kind of task, in a format compatible with Anthropic Agent Skills: a folder with a `SKILL.md` (a header between `---` lines with at least `name` and `description`, followed by the instructions), optionally with reference files or scripts. Design and progress are in the host repository's `ai-plan.md` §12.3.
+
+- **Where skills come from**: the user-level `~/.velashell/skills/<name>/` (not removed when the plugin is uninstalled) and `.velashell/skills/<name>/` inside the currently selected local workspace when it allows reading; the workspace's skill wins on a name clash. Skills are rescanned every turn. A skill whose header lacks `description`, whose name is invalid (letters, digits, `-`, `_`, at most 64 characters) or whose `SKILL.md` exceeds 256 KB is skipped; skills listed in `AiSettings.DisabledSkills` are left out. The header is read line by line as `key: value` (quotes and `>` / `|` block values supported), not as full YAML.
+- **Progressive disclosure**: the system prompt's `skills` section lists only names and one-line descriptions (descriptions clipped at 300 characters, at most 50 skills, workspace skills marked `(workspace)`), placed before the user's custom prompt and present only when `load_skill` is actually exposed in the turn. The model calls `load_skill(name)` for the instructions and the list of bundled files, and `read_skill_file(name, path)` for a bundled text file.
+- **Safety boundary**: read-only, scripts are never executed; `read_skill_file` refuses paths leaving the skill folder, symbolic links, binary files and files over 256 KB. Skill instructions are declared unable to override the user's explicit request, the tool rules or approvals. Workspace skills come from workspace files and fall under that workspace's authorization; the manual reminds users to check a project's `.velashell/skills` before opening someone else's project.
+- **Scope**: Agent and Plan modes on the desktop and the IM bridge; Chat mode and the external MCP server do not offer them. Both tools are registered in the built-in tool catalog (read-only), and unchecking `load_skill` under "Configure tools" turns skills off entirely. Invoking skills via slash commands and per-skill toggles in the UI come in later steps.
+
 ## 2. AI Gateway (S3, Longer-Term Mainline)
 
 ### 2.1 Why a "Gateway" Instead of Giving Every Plugin Its Own Model SDK
