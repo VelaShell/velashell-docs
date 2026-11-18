@@ -299,6 +299,15 @@ File reads used to return the whole file, there was no content search tool at al
   - **Saving**: `FileTextStore` first reads the current file (local paths through `LocalPathScope`; remote files only after checking the session is still connected). If the content differs from the baseline, the user chooses overwrite / reload / cancel. Writes keep the BOM and use the file's dominant line ending, and do not go through agent approval. A fragment-only diff offers "Load full file", which rebuilds the old content by applying the patch in reverse.
   - **Limit**: the SDK has no before-close hook, so closing a tab with unsaved changes is not intercepted.
 
+### 1.16 "You should know" bar (2026-11-18)
+
+In a long reply, the part the user must not miss is often one or two sentences, and it is gone once the reply scrolls away. The desktop panel adds a "You should know (N)" bar above the input box (above the changed-files bar) holding the notes the main model pins.
+
+- **Pinned by the main model, no separate extraction pass**: in Agent and Plan modes the desktop panel gives the main model an extra `note_for_user(kind, title, detail?)` tool, where `kind` is `warning` (a risk), `action` (something the user has to do themselves) or `info` (a finding that affects later decisions). The main model has already read the whole context, so pinning costs no extra request and sends the conversation to no one else; the trade-off is that it depends on the model following the tool description, which asks for few notes, no progress updates or answer summaries, and about three per reply at most. It has no side effects, so Plan mode gets it too.
+- **Data**: one `ConversationNotes` per conversation; the same title (case-insensitive) updates in place, at most 20 notes, titles clipped at 120 and details at 600 characters. Nothing extra is stored: the tool call and its arguments are already saved with the reply and the notes are rebuilt from them when a conversation is loaded; dismissing lasts only while the conversation stays open.
+- **UI**: collapsible (expanded by default), an icon and semantic color per kind, dismissible one by one or all at once; no tool card is shown for the tool in the reply. The bar is cleared or switched along with new, switched or loaded conversations.
+- **Scope**: Chat mode offers no tools; the IM bridge and the external MCP server have no bar and do not get the tool. It is registered in the built-in tool catalog (read-only) so it can be disabled under "Configure tools".
+
 ## 2. AI Gateway (S3, Longer-Term Mainline)
 
 ### 2.1 Why a "Gateway" Instead of Giving Every Plugin Its Own Model SDK
