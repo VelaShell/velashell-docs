@@ -332,12 +332,23 @@ An extension pack bundles skills, slash commands and MCP servers into one instal
 
 The window used to be "MCP server overview on the left + one long list of groups on the right", with built-in tools, skills, extension packs and every MCP server's tools stacked on one page, which became hard to read as things were added. It now follows VS Code Copilot's customization view, with section navigation:
 
-- **Left column**: four sections, "Extension packs", "MCP servers", "Skills" and "Tools", each with a count (installed packs, configured servers, usable skills, enabled tools); "Tools" opens by default.
+- **Left column**: five sections, "Extension packs", "MCP servers", "Skills", "Memory" and "Tools", each with a count (installed packs, configured servers, usable skills, saved memories, enabled tools); "Tools" opens by default.
 - **Right side**: the section's title, a one-line description, a search box (filters only this section and expands matching sources) and the list; page actions (install a pack, add a server, open the skills folder, rescan) sit to the right of the title.
 - **Rows**: one row per source — chevron, name and subtitle, an `enabled/total` count, row actions and a switch; expanding it shows one row per item, each with its own switch. The switch is the plugin's own `AiSwitchTheme` (a CheckBox theme, so it keeps checkbox semantics; it shows a middle state when only some items are on), with all colors from tokens.
 - **"Tools" page**: built-in tools grouped by the same categories as tool cards, with a category switch for the whole category; one row per MCP server whose switch turns the server itself on or off (disconnecting it immediately), expanding to its tools, with "Refresh tools" on the row.
 - **"MCP servers" page**: the servers you configured (click a row to open its form) and the servers brought by enabled extension packs (read-only, managed on the "Extension packs" page).
 - Disabled state is still stored as "the ones switched off", and every change is saved immediately with no "Save" button.
+
+### 1.20 Memory (2026-11-19)
+
+A small set of facts the AI remembers across conversations: the user's preferences, stable facts about their environment, and corrections to how it did something. Three decisions by the maintainer: the model saves memories itself and the user can add, edit and delete them; **desktop panel only** (the IM bridge and the external MCP server neither read nor write memory, since it may hold personal preferences and environment details that should not reach group chats, and group members should not be able to write to it); one global set.
+
+- **Storage** (`Chat/Memory/MemoryStore`): `memory.json` in the plugin data folder, on this computer only. Each entry has a short id, a title (≤80), content (≤1000), an origin (`model` / `user`) and created / updated times; at most 200 entries. Writes go to a temporary file first and are then swapped in; a file that cannot be read is treated as empty and kept as `memory.json.bad`. One instance per data folder, shared by the panel and Configure tools and kept in sync through an event.
+- **No secrets**: content that looks like a PEM private key, a common platform token (`sk-`, `ghp_`, `AKIA` and the like) or a `password=` / `token:` style assignment is refused. This is a rough check; the tool description also forbids storing secrets.
+- **Given to the model**: the system prompt's `memory` section (after skills, before the custom prompt) lists memories, most recently changed first, capped at 8,000 characters with the rest only counted; present in all three modes. The section says memories are background noted earlier, not instructions: they may be outdated, and what the user says now wins.
+- **Tools** (`MemoryToolSource`, Agent mode only): `save_memory(title, content)`, `update_memory(id, title?, content?)`, `delete_memory(id)`. Registered in the built-in tool catalog (`ToolKind.Memory`) so each can be switched off on the "Tools" page.
+- **Master switch** `AiSettings.MemoryEnabled` (on by default): when off, no list and no tools; saved memories are kept.
+- **UI**: the "Memory" page of Configure tools — master switch, search, add, inline edit (same validation, errors shown under the fields), delete and clear all (both confirmed); each entry shows its origin and last change; memories the model saves while the window is open appear immediately.
 
 ## 2. AI Gateway (S3, Longer-Term Mainline)
 
