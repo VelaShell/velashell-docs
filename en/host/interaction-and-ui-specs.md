@@ -158,15 +158,9 @@ From top to bottom:
        plugin is activated, so opening reports that it is not a file protocol. With three or more the item is not shown.
      - The list control itself stays single-select: the tree tracks the selection on its own, **the row's existing context menu is
        unchanged**, and the multi-select menu is a separate one.
-   - **Group order** (#571): group rows can be dragged directly. A drag starts after moving 5px (otherwise a click still expands /
-     collapses). Over the upper half of a group row = insert before it, the lower half = insert after it; over a connection row
-     inside a group = after that group; over a root-level connection, a pinned connection or empty space = move to the end.
-     A 2px accent insertion line marks the spot (not drawn when that row has scrolled out of view), and the ghost label following
-     the pointer says "group → move before "X" / move to the end"; dropping back in place shows the "no drop" cursor and no line.
-     "Move up / Move down" in the group context menu do the same for those who would rather not drag. The order is saved at once:
-     every group's sort order is renumbered 0, 1, 2… (orders left by deleted groups or by numbering-by-count could have gaps and
-     even duplicates), and a group created from the New Connection dialog goes after the highest order.
-   - By default, follows the active terminal tab: automatically expands the parent group, selects the corresponding connection, and scrolls to it without taking terminal keyboard focus. This can be disabled under “Settings → General → Behavior”.
+   - **Group ordering and nesting** (#571): group rows can be dragged directly. A drag starts after moving 5px (otherwise a click still expands / collapses). The upper, middle, and lower thirds of a group row mean insert before it, move inside it, and insert after it. Dragging over a connection inserts after that connection's group. Dragging over a root-level connection, a pinned connection, or empty space moves the group to the end of the root. A line marks insertion before or after a group. Dropping inside highlights the target group. The label next to the pointer identifies the destination. Moving into the group itself or one of its descendants is rejected. "Move up / Move down" in the group context menu reorders siblings. Each parent's sort orders are renumbered 0, 1, 2… and a new group is appended under its target parent. Moving the last connection out leaves an empty group available for reuse.
+     Upgrade all devices before syncing nested groups. Once a Gist stores a hierarchy it uses schema v4, even after every group returns to the root. Clients supporting only v2/v3 cannot pull that Gist.
+   - Following the active terminal tab expands its ancestor groups, selects the connection, and scrolls to it while keeping keyboard focus in the terminal. This can be disabled under “Settings → General → Behavior”.
    - **Pinned connections** (`pin` icon, “Pin to Top / Unpin” in the context menu): a pinned connection is hoisted to
      **the very top of the tree**, sorted by name, with an accent-colored `pin` badge and the same indent as a group row.
      - Hoisting to the top rather than floating within its group is what makes it work together with “collapse groups on
@@ -174,8 +168,8 @@ From top to bottom:
        which is no pin at all.
      - Pinning changes **where the row is drawn**, not the data: the connection still belongs to its group (`GroupId` is
        untouched) and the group row still counts its members (so expanding a group that has a pinned member shows fewer
-       rows than the count — that is correct); unpinning returns it to its group. Drop-target resolution and “delete the
-       group once it is empty” are unaffected.
+       rows than the count — that is correct); unpinning returns it to its group. Drop-target resolution, empty-group retention,
+       and explicit group deletion are unaffected.
    - **Collapse groups on startup** (“Settings → General”, off by default): groups load collapsed.
      - It only decides the initial state **the first time a group is seen in this run**. Whatever the user expands or
        collapses by hand is remembered in-process, so the full tree rebuilds triggered by creating / editing / deleting a
@@ -1170,7 +1164,7 @@ Right-click a session row in the sidebar to open it (200px, `bg-surface`, corner
 - Open in dual-pane SFTP (`arrow-right-left`, §6.2) — only with exactly two; if one of them cannot go into the dual pane the item
   is disabled, with a line below explaining why
 - Divider
-- Move to Group ▸ (submenu, as above; moved one by one, so "delete the group once it is empty" still applies)
+- Move to Group ▸ (submenu, as above; moved one by one, and an empty group remains available for reuse)
 - Batch edit… (`sliders-horizontal`, [batch edit dialog](#121-batch-edit-dialog))
 - Export selected… (`file-down`, [session import](session-import.md) section 7; their jump hosts come along automatically)
 - Divider
@@ -1179,7 +1173,7 @@ Right-click a session row in the sidebar to open it (200px, `bg-surface`, corner
 
 Right-clicking a row outside the selection opens the menu above as usual and ends the selection.
 
-**Group menu** (right-click a group row; the group is selected first):
+**Group menu** (right-click a group row). Counts, open, health check, and export include connections in all descendant groups, even when a filter hides them. Choose New Child Group to create a group under this one. In the connection editor, entering `Projects > A > Production` creates any missing groups when you save.
 
 - Open all connections (`plug`, accent primary action) — same concurrency and confirmation as "Open N connections"; nothing
   happens on an empty group
@@ -1191,7 +1185,7 @@ Right-clicking a row outside the selection opens the menu above as usual and end
 - Divider
 - Export group… (`file-down`) / Import into this group… (`file-up`; the import dialog's "Put into" preselects this group)
 - Divider
-- Delete Group (red, confirmed; the connections inside go with it)
+- Delete Group (red) shows how many subgroups and connections will be affected. Confirming deletes the group, its descendants, and all their connections.
 
 ### 12.1 Batch edit dialog
 
@@ -1206,8 +1200,7 @@ Opened from "Batch edit…" in the multi-select menu (540 wide, the same shell a
 | Authentication | full-width segments below the heading: shared credential (pick one, #550) / password (may be left empty to be asked when connecting) / key (file + optional passphrase) / agent / Tailscale SSH. FTP and plugin protocols only take passwords; those rows are skipped for anything else |
 | Jump host | direct, or one of this computer's SSH / SFTP connections (excluding the ones being edited); only applies to SSH / SFTP, and the whole batch is skipped if it would close a loop |
 
-The group is not here: "Move to Group" in the multi-select menu is how the group changes, and it carries the "delete the group
-once it is empty" rule — a second entry point here would drift from it sooner or later. Before "Apply" is pressed, the line at the
+To change the selected connections' group, use “Move to Group” in the multi-select menu. Before "Apply" is pressed, the line at the
 bottom already says something like "2 connections will change; 1 keeps its authentication (FTP and plugin protocols only support
 passwords)" — with FTP mixed in, switching to key authentication should not come as a surprise afterwards. "Apply" is disabled
 when nothing is ticked, the port is out of range, the shared credential option has none picked, or the key option has no file.

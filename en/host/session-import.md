@@ -22,8 +22,7 @@ click once** — not "first tell me which tool you are coming from".
   Xshell and WinSCP, only the first one scanned survives. Sessions that collide with one
   **already in** VelaShell are marked as duplicates too and left unticked (the "skip existing"
   switch can be turned off).
-- **One group per source**: imported sessions land in a new group tagged with their source,
-  rather than being mixed into the user's existing groups.
+- Imported sessions carry a source tag. Xshell and WinSCP folders become nested groups under the source group. OpenSSH config entries go directly into their source group.
 - **A result summary**: imported / passwords recovered / skipped.
 
 When a source cannot be detected, its card offers a "browse" entry point — that is how portable
@@ -255,6 +254,8 @@ line saying how many were added this way.
 
 ### 7.2 JSON layout
 
+The v1 example below imports each group at the root. Version 2 stores parent links in `parentGroupId`. Exporting a connection includes its ancestor groups and those of its jump hosts. Exporting a group includes its ancestors and its entire subtree, including empty groups. Export All also preserves empty groups. Use JSON to back them up because each CSV row represents a connection.
+
 ```json
 {
   "format": "velashell-sessions",
@@ -281,7 +282,7 @@ line saying how many were added this way.
   checks by reflection that every property is classified (configuration / secret / local state) and fails on
   any new, unclassified one — it guards against a new secret field being exported in plain text unnoticed
 - Per-session terminal overrides (encoding, terminal type, tab color, tab icon `tabIcon`, …) go into the JSON as-is
-  as the `terminal` object; the fixed 15 CSV columns do not include them
+  as the `terminal` object; the standard CSV columns do not include them
 - Never in the plain part: passwords, key passphrases, plugin secrets (they go into `secrets` if exported at all),
   and the last-connected time (local state)
 - A hand-written file may omit `format` and `id`: a `sessions` array is enough, and entries without an `id`
@@ -309,13 +310,14 @@ line saying how many were added this way.
 
 The exported CSV doubles as the template; the header is always:
 
-`id,name,group,protocol,host,port,username,auth,password,private_key,certificate,credential,jump_host,tags,notes`
+`id,name,group,group_path,protocol,host,port,username,auth,password,private_key,certificate,credential,jump_host,tags,notes`
 
 | Column | Value | When empty |
 | --- | --- | --- |
 | `id` | connection id (filled in on export; matches the original exactly when imported back) | a new connection |
 | `name` | display name | the host |
-| `group` | group name | ungrouped |
+| `group` | root-level group name, with any `>` read literally. Used only when the `group_path` column is absent | ungrouped |
+| `group_path` | full path, such as `Projects > A > Production`. Within a name, write `\>` for `>` and `\\` for a backslash | ungrouped, even when `group` has a value |
 | `protocol` | `ssh` / `sftp` / `ftp` (auto) / `ftp-plain` / `ftps` (explicit) / `ftps-implicit` / `plugin:<protocol id>` (an id with a dot may drop the `plugin:`) | `ssh` |
 | `host` | host name or IP, **the only required column**. `user@host:port` and `[v6]:port` are split too, but only when the matching column is empty; a bare IPv6 address is not split, and a `[v6]` without a port just loses its brackets (profiles store the bare address). A user name / port split this way also applies when overwriting an existing connection (even without those columns) | the row is an error |
 | `port` | 1–65535 | SSH / SFTP 22, FTP 21 (implicit FTPS 990); required for plugin protocols |
@@ -372,10 +374,8 @@ The template ships with two example rows using the documentation range 192.0.2.x
   would suggest otherwise); rows with errors cannot be ticked in any mode
 - **The file's ids are kept when possible**: when an id does not clash with a local one it is reused, so moving files
   between two computers that sync through the cloud still shows the same connection to sync rather than a copy
-- **Groups**: by default the file's groups — JSON matches a local group by id, then by name (case-insensitive); CSV by
-  name; when nothing matches the group is created after the existing ones, in file order, reusing the file's group id.
-  "Put into" can pick a local group or "Ungrouped" instead, putting everything there; coming from "Import into this
-  group…" preselects that group. Each preview row shows the group it lands in, and groups to be created are marked "new"
+- **Groups**: the default is to use the groups in the file. The importer maps each parent first. Within that parent, JSON matches by id first, then by case-insensitive name. CSV matches each path segment by name and creates missing groups in order. Two projects can each keep their own Production group.
+  On CSV overwrite, omitting both group columns preserves the current group. An empty `group_path` cell moves the connection to Ungrouped. “Put into” assigns all entries to a chosen group or to Ungrouped. Importing from a group menu preselects that group. The preview shows the destination and marks groups to be created.
 - **Shared credentials** (JSON): one with the same id or name locally is reused and **not overwritten**; only when there
   is none is it created (with its password if unlocked). When the reused local one lacks a password / passphrase (as a
   credential pulled by cloud sync without an end-to-end passphrase does) and the unlocked file has it, the missing items
