@@ -15,6 +15,10 @@ Architecture, design specs and research for the VelaShell main application.
 | [keyboard-shortcuts.md](keyboard-shortcuts.md) | Every keyboard shortcut and mouse gesture (generated from `ShortcutCatalog`, not hand-copied) |
 | [settings-audit.md](settings-audit.md) | Settings audit ledger and remediation log |
 
+## Optional X window screenshot encoder
+
+From the VelaShell repository root, run `dotnet build src/VelaShell/VelaShell.csproj -p:UseSimdSkiaPng=true` to export X window PNGs with SimdSkia.Imaging 0.1.12. Omit the property to use the original encoder without a SimdSkia dependency. This does not change clipboard images, terminal rendering or hardware acceleration. Do not replace the desktop backend as well: SimdSkia.Avalonia.Desktop 0.1.12 fails at startup on Avalonia 12.2.0 because it lacks `CreateStreamGeometryBuilder`.
+
 ## Feature design and research
 
 | Document | Contents |
