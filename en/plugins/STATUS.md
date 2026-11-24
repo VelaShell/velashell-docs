@@ -138,7 +138,7 @@ at load time):
 
 | Package | Referenced by | Contents |
 | --- | --- | --- |
-| `VelaShell.PluginSdk.Build` | **the plugin project (this one alone)** | MSBuild props/targets plus the bundled packer; transitively brings in the two below and **Avalonia pinned to the host's exact version** |
+| `VelaShell.PluginSdk.Build` | **the plugin project (this one alone)** | MSBuild props/targets plus the bundled packer; brings in the contract package, but does not depend on or transmit an Avalonia pin; UI plugins add matching direct references for the target host |
 | `VelaShell.PluginSdk` | transitively | Contract assembly (BCL only) |
 | `VelaShell.PluginSdk.Testing` | plugin test projects | `TestPluginContext` and capability doubles |
 | `VelaShell.Plugin.Cli` | dotnet tool | `vela-plugin`: dev init/run/list/prune/link, hosts, doctor, validate, pack, sign, verify, info, unpack, keygen |
@@ -146,9 +146,10 @@ at load time):
 
 The Build package handles four things on the plugin project's behalf: `EnableDynamicLoading` and
 `plugin.json` output; keeping shared assemblies (`VelaShell.PluginSdk` and `Avalonia*`, matching
-`PluginAssemblyLoadContext` exactly) out of the plugin directory; Avalonia version consistency
-(NU1608 promoted to an error plus a `VELA1001` build-time check); and manifest validation with
-`dotnet build -t:PackVpx`.
+`PluginAssemblyLoadContext` exactly) out of the plugin directory and `.vpx`; version consistency for
+plugin-direct Avalonia references (NU1608 promoted to an error plus a `VELA1001` build-time check);
+and manifest validation with `dotnet build -t:PackVpx`. UI plugins align versions from the target host's
+`Directory.Packages.props` and add explicit references, which preserve AXAML/compiler build and compile assets.
 
 **`.vpx` became a dedicated container** (`VelaShell.PluginSdk/Packaging/VpxContainer.cs`, one
 implementation shared by host and tooling): a 64-byte header (magic `56 50 58 1A`, format version,

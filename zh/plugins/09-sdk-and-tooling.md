@@ -3,8 +3,8 @@
 > **实现注记(2026-08)**:S-1 / S-2 / S-3 / S-4 / S-5 已落地,与下文蓝图的出入以实现为准:
 >
 > - 交付物是**五个包**:`VelaShell.PluginSdk`(契约)、`VelaShell.PluginSdk.Testing`(替身)、
->   `VelaShell.PluginSdk.Build`(**插件工程只需引这一个**:MSBuild props/targets、依赖锁、
->   随包分发的打包器)、`VelaShell.Plugin.Cli`(dotnet tool `vela-plugin`)、
+>   `VelaShell.PluginSdk.Build`(**插件工程只需引这一个**:MSBuild props/targets、共享运行时排除与
+>   清单/版本核对、随包分发的打包器)、`VelaShell.Plugin.Cli`(dotnet tool `vela-plugin`)、
 >   `VelaShell.Plugin.Templates`(`dotnet new`)。没有 `VelaShell.PluginProtocol` 这个包 ——
 >   RPC 线协议就在契约程序集里(轻量协议,不用 StreamJsonRpc,见 05 注记)。
 > - 模板是 **`velaplugin` / `velaplugin-ui` / `velaplugin-protocol` / `velaplugin-workspace`** 四个(后两个是终端协议与工作台连接类型,自带测试工程与本机回显服务);`velaplugin-automation` 待自动化能力域动工再说。

@@ -10,8 +10,8 @@
   - `isolated`: the plugin runs in a separate VelaShell.PluginHost process (named-pipe RPC), so crashes and hangs do not affect the host; panels are separate card windows (use `inProcess` for true docked panels).
   The **plugin source code is identical** in both modes.
 - **Dependency isolation**: the plugin resolves its bundled dependencies (any NuGet packages) from its plugin directory according to its `deps.json`, without interfering with the host; only two categories of assemblies are forcibly shared with the loader to guarantee type identity:
-  `VelaShell.PluginSdk` and `Avalonia*` (therefore the Avalonia version must match the host, see §5.9).
-- **Narrow waist contract**: plugins reference `VelaShell.PluginSdk` (BCL dependencies only); UI code uses full Avalonia directly (compile-only reference). **Never** copy the SDK or Avalonia assemblies into the plugin directory.
+  `VelaShell.PluginSdk` and `Avalonia*` (therefore a UI plugin must align with its target host, see §5.9).
+- **Narrow waist contract**: plugins reference `VelaShell.PluginSdk` (BCL dependencies only); UI code references full Avalonia directly for compile-time use. **Never** copy the SDK or shared Avalonia runtime assemblies into the plugin directory. `.Build` does not transmit Avalonia or export an Avalonia pin; a plugin with no matching UI dependency needs neither property.
 - **Fault isolation**: in-process mode uses full-path guards (a single plugin is marked Failed, but infinite loops and runaway memory cannot be prevented); isolated mode uses the process boundary (even a hard failure only loses that plugin).
 - **Zero startup overhead**: discovery only reads `plugin.json` and does not touch assemblies, while discovery and activation run on a background thread after the main window is displayed; when there are no plugins, the startup path adds only two directory-existence checks.
 
@@ -81,13 +81,44 @@ cd Snippets
 dotnet build -c Release -t:PackVpx               # → bin/vpx/acme.snippets-0.1.0.vpx
 ```
 
-The generated `.csproj` has a single dependency:
+The generated base `.csproj` has a single build-support dependency:
 
 ```xml
 <PackageReference Include="VelaShell.PluginSdk.Build" Version="2.1.4" />
 ```
 
-That one package brings everything a plugin project needs: the `VelaShell.PluginSdk` contract assembly, **Avalonia pinned to exactly the host's version** (including its AXAML compiler), `EnableDynamicLoading`, `plugin.json` copied to the output, shared assemblies kept out of the plugin directory, build-time manifest validation, and the `PackVpx` target. Do **not** reference `VelaShell.PluginSdk` or `Avalonia` separately: a version mismatch fails the build with `VELA1001` instead of surfacing at runtime as a cross-load-context cast failure on the user's machine.
+The template release script maintains this version; do not infer a new version from this page. The package provides
+the `VelaShell.PluginSdk` contract assembly, `EnableDynamicLoading`, `plugin.json` output, shared-runtime exclusion,
+build-time manifest validation, and the `PackVpx` target. It **does not depend on Avalonia or transmit an Avalonia
+pin**. Base, protocol, and workspace plugins with no UI dependency need no Avalonia properties or packages.
+
+When `velaplugin-ui`, or your own code, uses AXAML/UI, read the exact version from the target host's
+`VelaShell/src/Directory.Packages.props` and reference it directly in the plugin project:
+
+```xml
+<PropertyGroup>
+  <VelaAvaloniaVersion>12.2.0</VelaAvaloniaVersion>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Avalonia" Version="$(VelaAvaloniaVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+If the plugin uses `Avalonia.AvaloniaEdit`, add the matching host version and direct reference too:
+
+```xml
+<PropertyGroup>
+  <VelaAvaloniaEditVersion>12.0.0</VelaAvaloniaEditVersion>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Avalonia.AvaloniaEdit" Version="$(VelaAvaloniaEditVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+The `12.2.0` and `12.0.0` values are examples and must match the target host. If the plugin does not use
+`Avalonia.AvaloniaEdit`, do not declare its property or package. `.Build` checks the resolved package versions
+against those properties. Direct references retain the AXAML/compiler build and compile assets, while shared runtime
+DLLs stay out of the output and `.vpx`. Do not put `VelaShell.PluginSdk.dll` or `Avalonia*.dll` in the plugin directory.
 
 | Package | Referenced by | Purpose |
 | --- | --- | --- |
@@ -281,7 +312,7 @@ dotnet new velaplugin-workspace -n EchoDesk  --publisher acme   # workspace conn
 | `publisher` | | Publisher identity (will be bound to the signing key and take part in trust decisions) |
 | `author` | | Author, shown on the plugin manager page (e.g. `"Joe <joe@example.com>"`, ≤128 characters, no control characters). When omitted the page falls back to `publisher` |
 | `apiLevel` | | Defaults to 1; a generation higher than the host supports is marked Incompatible and not loaded |
-| `minHostVersion` | | Minimum required host version; if unmet, the plugin is Incompatible |
+| `minHostVersion` | | Minimum required host version; if unmet, the plugin is Incompatible. Use the first compatible host release that provides a newer host API the plugin uses, never an Avalonia version or `minSdkVersion` |
 | `activationEvents` | | Omitted or containing `"onStartup"` = activate at startup; containing only `"onCommand:<command id>"` = **lazy activation** (load/start the process only when the placeholder command is invoked; the corresponding placeholder must be declared in `contributes.commands`) |
 | `contributes.commands` | | Declarative command placeholders `[{id,title,category}]`: available in the command palette during discovery; ids must be prefixed by the plugin id; on activation, the plugin should `Register` a real handler with the same id to replace the placeholder |
 | `idlePolicy` | | `"keepAlive"` (default) / `"recyclable"`: in isolated mode, a process is reclaimed after continuous idleness (no RPC and no open panels, 15 minutes by default), while placeholder commands remain available for a later trigger |
@@ -551,9 +582,34 @@ Handlers are invoked off the UI thread and **must return quickly without throwin
 
 Plugins use **full Avalonia** to design their own UI: choose compile-time AXAML or pure code, bring your own styles, resources, and localization, and add any third-party component packages (distributed in the plugin directory and isolated from other plugins by the ALC).
 
-**The only hard constraint: the Avalonia version must match the host.** `VelaShell.PluginSdk.Build` already takes care of it: it hands Avalonia to the plugin project at an exact version and compile-only (the reference in the package carries `ExcludeAssets="runtime"`) — Avalonia DLLs are never copied into the plugin directory, and the loader shares the same set at runtime (in-process = the host's; isolated process = bundled with PluginHost). Which version is pinned is decided by `VelaAvaloniaVersion` in the SDK repository's `Directory.Build.props` (SDK 2.1.5 pins 12.1.4). **Do not add your own `PackageReference` to Avalonia in the plugin project**: if the resolved version does not match, the build fails with `VELA1001`.
+**The only hard constraint: the Avalonia version must match the target host.** `VelaShell.PluginSdk.Build` no longer
+transmits Avalonia or exports an Avalonia pin. The host declares exact versions in
+`VelaShell/src/Directory.Packages.props`; a UI plugin must map the value to its own property and reference it
+directly, preserving the AXAML/compiler build and compile assets:
 
-Third-party packages based on Avalonia, such as control libraries, are referenced normally (their DLLs ship with the plugin). The exception is packages whose **assembly name starts with `Avalonia`** (such as `AvaloniaEdit`): the loader decides sharing by name prefix, so they fall back to the loading side's copy too — only ones the host itself ships can be used, and they must likewise be compile-only and match the host's version (the SDK exports `$(VelaSdkPinnedAvaloniaEditVersion)` for checking); see [SDK reference §7](../sdk/sdk-reference.md).
+```xml
+<PropertyGroup>
+  <VelaAvaloniaVersion>12.2.0</VelaAvaloniaVersion>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Avalonia" Version="$(VelaAvaloniaVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+`12.2.0` is an example; the target host's `src/Directory.Packages.props` is authoritative. If the plugin uses
+`Avalonia.AvaloniaEdit`, also declare that host's `VelaAvaloniaEditVersion` and reference the package explicitly
+with `ExcludeAssets="runtime"`; otherwise no such property is needed. `.Build` checks resolved package versions
+against the target properties, so drift fails at build time. Shared runtime DLLs are not copied into the plugin
+directory or `.vpx`. A package whose name starts with `Avalonia` but is not provided by the host is still treated as
+shared by the loader and cannot bypass that rule by being bundled.
+
+When moving from the old `.Build` to the combination that no longer transmits Avalonia, this is a **one-time
+migration**: add only the direct references actually needed by the target host, then verify build and `PackVpx`.
+Published SDK/.Build packages are not retroactively changed by this guide. When the host later updates Avalonia,
+only synchronize the properties and direct references when rebuilding for that host; do not release a new SDK/.Build
+or bump the plugin version or `minHostVersion` solely because Avalonia changed. `minHostVersion` names the first
+compatible **host release** that provides a newer host API the plugin uses; it never contains an Avalonia version or
+`minSdkVersion`. See [SDK reference §7](../sdk/sdk-reference.md).
 
 Opening a panel: the host invokes the content factory on the **UI thread**, and you only need to return your control:
 

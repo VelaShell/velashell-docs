@@ -155,15 +155,17 @@ AI / Redis 面板另有 headless 装载与交互测试。
 
 | 包 | 谁引用 | 内容 |
 | --- | --- | --- |
-| `VelaShell.PluginSdk.Build` | **插件工程(只需引这一个)** | MSBuild props/targets + 随包分发的打包器;传递引入下面两项与**精确锁死宿主版本的 Avalonia** |
+| `VelaShell.PluginSdk.Build` | **插件工程(只需引这一个)** | MSBuild props/targets + 随包分发的打包器;传递引入契约包,但不依赖或传递 Avalonia pin;UI 插件按目标宿主直接引用匹配版本 |
 | `VelaShell.PluginSdk` | 传递引入 | 契约程序集(仅 BCL) |
 | `VelaShell.PluginSdk.Testing` | 插件测试工程 | `TestPluginContext` 与能力替身 |
 | `VelaShell.Plugin.Cli` | dotnet tool | `vela-plugin`:dev init/run/list/prune/link、hosts、doctor、validate、pack、sign、verify、info、unpack、keygen |
 | `VelaShell.Plugin.Templates` | dotnet new | `velaplugin`、`velaplugin-ui`、`velaplugin-protocol`(终端协议)、`velaplugin-workspace`(工作台连接类型);后两个自带测试工程与本机回显服务 |
 
 Build 包替插件工程处理掉四件事:`EnableDynamicLoading` 与 `plugin.json` 输出;
-共享程序集(`VelaShell.PluginSdk` 与 `Avalonia*`,口径与 `PluginAssemblyLoadContext` 一致)不落插件目录;
-Avalonia 版本一致性(NU1608 升为错误 + `VELA1001` 构建期核对);清单校验与 `dotnet build -t:PackVpx`。
+共享程序集(`VelaShell.PluginSdk` 与 `Avalonia*`,口径与 `PluginAssemblyLoadContext` 一致)不落插件目录或 `.vpx`;
+对插件直接引用的 Avalonia 包做版本一致性检查(NU1608 升为错误 + `VELA1001` 构建期核对);
+清单校验与 `dotnet build -t:PackVpx`。UI 插件需从目标宿主的 `Directory.Packages.props` 对齐版本并显式引用,
+直接引用保留 AXAML/compiler 的 build/compile 资产。
 
 **`.vpx` 改为专属容器**(`VelaShell.PluginSdk/Packaging/VpxContainer.cs`,宿主与工具同一份实现):
 64 字节头部(魔数 `56 50 58 1A`、格式版本、标志位、载荷长度、SHA-256、掩码随机数、头部 CRC32)、

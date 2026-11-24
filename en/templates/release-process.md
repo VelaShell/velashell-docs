@@ -1,8 +1,8 @@
 # Release process (dotnet new templates)
 
-> This page covers how **this repository** is released. For the contract SDK see
-> [velashell-plugin-sdk](../sdk/release-process.md);
-> for `vela-plugin` and `VelaShell.PluginSdk.Build` see
+> This page covers how **this repository** is released. For the contract SDK and
+> `VelaShell.PluginSdk.Build` release process, see
+> [velashell-plugin-sdk](../sdk/release-process.md); for `vela-plugin` see
 > [velashell-plugin-cli](../cli/release-process.md).
 
 One release of this repository produces one package: `VelaShell.Plugin.Templates`.

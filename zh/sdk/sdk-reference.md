@@ -12,7 +12,7 @@
 
 | 包                              | 出自哪个仓库                                                                              | 谁引用                   | 内容                                                                                         |
 | ------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------- |
-| **`VelaShell.PluginSdk.Build`** | 本仓库(2026-09-11 起;此前在 velashell-plugin-cli)                                         | **插件工程(只引这一个)** | MSBuild props/targets、锁定版本的 Avalonia、随包分发的打包器、清单校验、`PackVpx` 目标       |
+| **`VelaShell.PluginSdk.Build`** | 本仓库(2026-09-11 起;此前在 velashell-plugin-cli)                                         | **插件工程(只引这一个)** | MSBuild props/targets、共享运行时资产排除、随包分发的打包器、清单校验、`PackVpx` 目标       |
 | `VelaShell.PluginSdk`           | 本仓库                                                                                    | 由上者传递引入           | 契约程序集:入口接口、`IPluginContext` 与全部能力接口、DTO、清单模型、`.vpx` 容器、宿主注册表 |
 | `VelaShell.PluginSdk.Testing`   | 本仓库                                                                                    | 插件的**测试**工程       | `TestPluginContext` 与各能力的内存替身                                                       |
 | `VelaShell.Plugin.Cli`          | [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli)             | 开发者机器(dotnet tool)  | `vela-plugin`:开发内环、校验、打包、签名、体检                                               |
@@ -22,11 +22,15 @@
 那个版本号属于 `VelaShell.PluginSdk.Build`,与本仓库的 SDK 版本各走各的线,
 所以不在这里重复一遍(重复一遍就是等着它过期)。
 
-**不要**再单独引用 `VelaShell.PluginSdk` 或 `Avalonia` —— 版本对不上会在构建期直接报
-`VELA1001`,而不是等用户装上后在运行期表现为控件类型转换失败。
+`.Build` 与 `VelaShell.PluginSdk` 都不依赖 Avalonia,也不导出 Avalonia 版本锁。契约程序集只依赖 BCL。
+插件若有 UI,必须按目标宿主的版本直接引用 Avalonia;没有 UI 或没有匹配的 `Avalonia*` 依赖时,
+不需要声明任何 Avalonia 属性。`VelaShell.PluginSdk` 是宿主与插件**唯一共享的契约类型来源**,
+往契约程序集里塞第三方依赖等于把那个依赖的版本强加给所有插件。
 
-契约程序集只依赖 BCL。这是一条纪律:它是宿主与插件**唯一共享的类型来源**,
-往里塞第三方依赖等于把那个依赖的版本强加给所有插件。
+宿主在 `VelaShell/src/Directory.Packages.props` 集中声明准确的 Avalonia 版本。插件工程把这些值映射到
+`VelaAvaloniaVersion`(以及实际使用 `Avalonia.AvaloniaEdit` 时的可选 `VelaAvaloniaEditVersion`),
+并显式写对应的 `PackageReference`。`.Build` 会核对解析后的实际包版本与这些属性;AXAML/compiler 的
+build/compile 资产来自插件的直接引用,运行时资产则不复制进 `.vpx`。详见[开发指南 §5.9](../templates/dev-guide.md)。
 
 ---
 
@@ -375,7 +379,7 @@ if (ctx.Ui.SupportsNotifications)
 | 1.4       | `HostRegistry`(宿主自我登记,供 `vela-plugin` 定位安装与核对版本)                                                                                                                                                                                                                                                    | **不需要** —— 这是工具链面,插件代码不调用 |
 | **1.5**   | 协议连接表单三件套:`ProtocolFeatures.NoEndpoint`(收起端口栏)、`ProtocolSettingKind.DynamicChoice` + `IProtocolChoiceSource`(候选项在表单打开时现取)、`AllowsCustomValue` / `HostKind` / `HostChoices` / `HostAllowsCustomValue`(可编辑下拉;主机栏也能做成下拉)。由串口插件驱动 —— 端口是热插拔设备,波特率有非标值。 | 用到就要(`1.5.0`)                         |
 | **2.0**   | **代际变更(`apiLevel` 1 → 2)**,详见下方「2.0 迁移」。内容上带的是 `IHostThemeApi`(`ctx.Theme`,见 §3.5):主题身份、整套已解析配色、覆盖全部换肤情形的 `Changed`。在这之前插件只看得到 `IHostInfo.Theme` 那三个值,认不出具名主题与强调色,而且同明暗内部换肤时那个值根本不变。                                          | 不需要 —— 用 `apiLevel: 2` 表达即可       |
-| **2.0.1** | 会话能力的「打开已保存的会话」三件套:`ISessionsApi.ListSavedAsync` / `OpenAsync` / `CloseAsync`,配套 `SavedSessionInfo`、`SessionOpenOptions` 与 `PluginSessionOpenException`。在这之前插件只能操作用户**已经手动连上**的机器,任何无人值守的用法都塌了半边。(2.0.2 没有契约新增,只把 Avalonia 版本锁抬到 12.1.2。)                                                        | 用到就要(`2.0.1`)                         |
+| **2.0.1** | 会话能力的「打开已保存的会话」三件套:`ISessionsApi.ListSavedAsync` / `OpenAsync` / `CloseAsync`,配套 `SavedSessionInfo`、`SessionOpenOptions` 与 `PluginSessionOpenException`。在这之前插件只能操作用户**已经手动连上**的机器,任何无人值守的用法都塌了半边。(2.0.2 没有契约新增;按当时的集成模型把 Avalonia 版本锁抬到 12.1.2。当前 SDK 已不再导出 Avalonia pin。)                                                        | 用到就要(`2.0.1`)                         |
 | **2.0.3** | 标签页图标的第一版:`ProtocolDescriptor` / `WorkspaceDescriptor` 上各一组 `IconPathData` / `IconViewBoxSize` / `IconIsFilled`。⚠️ **这一版的三对字段已被 2.0.4 版的 `Icon` 取代,不要再用** —— 当时面板那条路还漏着,而同一个概念在两处各写三个平行属性本身就是设计错误。发布次日即改,零插件受影响。 | ❌ 已废弃,直接用 2.0.4 版                   |
 | **2.0.4**   | 标签页图标收成一个入口 `PluginIcon`(见 §3.6),三处共用:`ProtocolDescriptor.Icon`、`WorkspaceDescriptor.Icon`,以及**新增的** `PanelOptions.Icon` —— 面板标签走的不是描述符那条路,2.0.3 漏了它。带 `PluginIcon.Stroked` / `PluginIcon.Filled` 两个便捷构造。 | 用到就要(`2.0.4`)                           |
 | **2.0.6** | `IProtocolStreamUpload`:`IProtocolFileSystem` 可**选择**兼实现的接口 —— 把一条顺序读的流写成远端文件(覆盖)。宿主据此把文件在两个远程会话之间经内存中转,而不必先落一份临时文件(「远程 + 远程」双栏文件标签)。流归调用方;可能不可 Seek,长度单独给出;不续传。不实现完全合法:宿主就把这个协议当作不支持从流上传。只增不改,`apiLevel` 不变。 | 用到就要(`2.0.6`) |
@@ -448,8 +452,9 @@ public async Task Activate_RegistersCommand()
 1. **每插件一个可收集 ALC**,插件自带依赖按其 `deps.json` 在插件目录内解析 ——
    你可以引任意 NuGet 包,与宿主的版本互不干扰。
 2. **两类程序集强制共享**:`VelaShell.PluginSdk` 与 `Avalonia*` 一律回落到装载方那一份。
-   所以插件的 Avalonia 版本必须与宿主一致(SDK 包已锁定),而且名字以 `Avalonia` 开头的
-   第三方包用不了(会被当成共享程序集去宿主里找,找不到)。
+   所以插件的 Avalonia 版本必须与目标宿主一致;SDK 包不再替插件锁定该版本。需要 UI 的插件要按
+   [开发指南 §5.9](../templates/dev-guide.md)直接引用目标宿主的版本,而名字以 `Avalonia` 开头、
+   但宿主并未提供的第三方包会被当成共享程序集去宿主里找,因此不能使用。
 3. **开发期插件从影子副本装载**(`~/.velashell/dev-shadow/<id>/gen-N`),因此宿主运行时
    不锁你的 `bin`,可以边跑边重编,改完在管理页点"重新加载"即可。
    **已安装的进程内插件同样从影子副本装载**(`~/.velashell/plugin-shadow/<id>/gen-N`):插件漏了引用、

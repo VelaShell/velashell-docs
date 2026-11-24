@@ -11,7 +11,7 @@ One release of this repository produces three packages, which share the version 
 | --- | --- |
 | `VelaShell.PluginSdk` | The contract assembly |
 | `VelaShell.PluginSdk.Testing` | Test doubles |
-| `VelaShell.PluginSdk.Build` | The **one package a plugin project references**: targets + the bundled packer + the dependency pins |
+| `VelaShell.PluginSdk.Build` | The **one package a plugin project references**: targets, the bundled packer, shared-runtime exclusion, and manifest/version checks |
 
 `.Build` moved here from velashell-plugin-cli on 2026-09-11; the `.vpx` packer (`src/VelaShell.PluginSdk.Packer`,
 `IsPackable=false`) lives in this repository too and is not a package of its own — it ships only as build output
@@ -156,45 +156,62 @@ The last two live in another repository and are **optional** locations: the scri
 
 ---
 
-## 4. The Avalonia version pin: this repository is the authority
+## 4. Avalonia dependency boundary: the host owns versions, plugins reference them explicitly
 
-The Avalonia a plugin project compiles against and the host's Avalonia it is forced to share at run time inside
-the host process must be the same version — the loader makes every `Avalonia*` assembly fall back to the loading
-side, so a version drift means control types that do not match across ALCs, and it only blows up once a user
-installs the plugin.
+`VelaShell.PluginSdk` and `VelaShell.PluginSdk.Build` **do not depend on Avalonia and export no Avalonia pin**.
+This lets plugins without UI avoid restoring the UI framework and keeps an SDK release version from being mistaken
+for the UI version used by every host.
 
-In the single-repository days, `VelaShell.PluginSdk.Build` made this check by `XmlPeek`-ing the host's
-`src/Directory.Packages.props` directly. After the split the host's files are out of reach, so it now runs the
-other way round, with this repository supplying the authoritative value:
+The target host maintains the exact Avalonia versions centrally in `VelaShell/src/Directory.Packages.props`. A
+plugin project that uses UI maps the target host's value to its own property and references the package explicitly:
 
-```
-Directory.Build.props: <VelaAvaloniaVersion>x.y.z</VelaAvaloniaVersion>      ← the authority
-  ├── written into the VelaShell.PluginSdk package's buildTransitive/VelaShell.PluginSdk.props at pack time
-  │     → $(VelaSdkPinnedAvaloniaVersion), visible to every project that references VelaShell.PluginSdk
-  │       ├── VerifyAvaloniaMatchesSdk in the host's src/Directory.Build.targets
-  │       └── the check of the same name in velashell-plugins' test projects (VELAP1000)
-  └── read directly by VelaShell.PluginSdk.Build in this same repository (VerifyAvaloniaVersionPin):
-        the exact range [x.y.z] on its csproj must equal it (VELA1006),
-        the default of the same name in build/VelaShell.PluginSdk.Build.props must equal that range (VELA1000),
-        and a missing property is itself an error (VELA1005)
+```xml
+<PropertyGroup>
+ <VelaAvaloniaVersion>12.2.0</VelaAvaloniaVersion>
+</PropertyGroup>
+<ItemGroup>
+ <PackageReference Include="Avalonia" Version="$(VelaAvaloniaVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
 ```
 
-That props file in the package is the only channel that carries this fact to the **host**, and leaving it out of
-the package does not make `pack` fail — so both CI and Release have a "Verify the pin props shipped in the
-package" step that unpacks the nupkg and checks it. The `.Build` side does not use that channel (same repository,
-it reads the property directly).
+If the plugin uses `Avalonia.AvaloniaEdit`, add the matching host version and direct reference too:
 
-**The full procedure for changing `VelaAvaloniaVersion`**:
+```xml
+<PropertyGroup>
+ <VelaAvaloniaEditVersion>12.0.0</VelaAvaloniaEditVersion>
+</PropertyGroup>
+<ItemGroup>
+ <PackageReference Include="Avalonia.AvaloniaEdit" Version="$(VelaAvaloniaEditVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
 
-1. Ship it in the same wave as the host (the host must reference the same version);
-2. In **the same commit**, change both copies inside `.Build`: the exact Avalonia range on
-   `VelaShell.PluginSdk.Build.csproj` and the `VelaAvaloniaVersion` default in `build/VelaShell.PluginSdk.Build.props`
-   — otherwise VELA1006 / VELA1000 go red on the spot;
-3. Release the SDK — all three packages go out together, so plugin projects get the new pin as soon as they move to
-   that `.Build`;
-4. Downstream follows: the host raises its SDK packages; velashell-plugins raises `.Build` / `.Testing` and, as
-   VELAP1000 tells it, moves its test projects' `Avalonia*` to the new value; the templates repository raises
-   `VelaBuildPackageVersion` when it wants new projects to point there.
+The `12.2.0` and `12.0.0` values are examples. Replace them with the exact values from the target host's
+`src/Directory.Packages.props`, and do not infer them from the SDK or a documentation banner. If those packages
+are not used, do not declare the corresponding properties or references. With central package management, the version may be set in the plugin's own
+`Directory.Packages.props`, while the direct `PackageReference` and runtime exclusion remain required.
+
+`.Build` checks the resolved `Avalonia` / `Avalonia.AvaloniaEdit` package versions against the plugin's target
+properties and fails the build on a mismatch. The direct references provide the build and compile assets needed by
+AXAML/compiler, while `ExcludeAssets="runtime"` and `.Build` packaging rules keep shared runtime DLLs out of the
+output and `.vpx`. `VelaShell.PluginSdk.dll` and shared runtime assemblies whose names start with `Avalonia` are
+not distributed with the package. A same-prefix third-party package that the host does not provide cannot bypass
+the loader's sharing rule.
+
+### One-time migration from the old `.Build`
+
+When a plugin first adopts the SDK/.Build combination that no longer transmits Avalonia, perform this migration
+against the target host:
+
+1. Read the exact versions from `VelaShell/src/Directory.Packages.props`.
+2. Set properties and direct references only for the `Avalonia` / `Avalonia.AvaloniaEdit` packages the plugin actually uses.
+3. Run the build and `PackVpx`, confirming AXAML compiler assets work and the `.vpx` contains no shared runtime DLLs.
+
+Published SDK/.Build packages are not retroactively changed by this documentation. Projects that have not migrated
+continue according to the behavior of the package they reference. When the host later updates Avalonia, a plugin
+that rebuilds for that host only synchronizes its properties and direct reference versions. It does not need a new
+SDK/.Build release, and an Avalonia update alone does not require a plugin version or `minHostVersion` bump.
+`minHostVersion` names the first compatible **host release** when the plugin relies on a newer host API. It never
+contains an Avalonia version or `minSdkVersion`.
 
 ---
 

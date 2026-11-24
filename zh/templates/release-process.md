@@ -1,9 +1,9 @@
 # 发版流程(dotnet new 模板)
 
-> 本篇只讲**本仓库**怎么发版。契约 SDK 见
+> 本篇只讲**本仓库**怎么发版。契约 SDK 与
+> `VelaShell.PluginSdk.Build` 发版流程见
 > [velashell-plugin-sdk](../sdk/release-process.md),
-> `vela-plugin` 与 `VelaShell.PluginSdk.Build` 见
-> [velashell-plugin-cli](../cli/release-process.md)。
+> `vela-plugin` 见 [velashell-plugin-cli](../cli/release-process.md)。
 
 本仓库一次发布产出一个包:`VelaShell.Plugin.Templates`。
 
