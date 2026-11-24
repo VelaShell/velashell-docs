@@ -285,7 +285,7 @@ AI 审批与宿主上传确认是独立两层：宿主在读取文件内容与�
 - **界面**：工具卡按类别显示图标（`ToolIcons` 按工具名精确映射，MCP 等外部工具为插头），状态图标移到右侧；修改文件的卡片头部显示 `+N −M`，展开为插件内 Myers 行级 diff（`LineDiff`）画出的统一差异（行号、增删着色、只留改动附近 3 行）。增删底色用主题令牌 `VelaStatusConnected` / `VelaError` 叠低透明度，随 12 套命名主题派生，不新增令牌。输入框上方的「N 个文件已更改」条汇总本段对话的 `FileChange`（同一文件合并，Before 取首次、After 取末次），点文件经 `IUiApi.ShowPanelAsync`（`PanelDisplayMode.Document`）在主窗口标签区打开对比文档：默认左右并排、可切内联、上一处 / 下一处导航；同一文件复用已开标签并就地刷新，打开失败时退回独立窗口。列表按对话隔离，不入库。
 - **第二轮（2026-11-17）**：
   - **宿主路由**：宿主原先把 AI 插件的所有 Document 请求都送进专属区，聊天面板占着时对比标签打不开，只能退回小窗；现在只有 `Placement = Right` 且专属区空着才进专属区，见 [`08-ui-extensions.md`](08-ui-extensions.md)。对比标签开新的之前先 `ActivateAsync` 已开的那个，保证落在同一组；退回窗口占工作区的 90%。
-  - **语法高亮**：`TextMateHighlighter` 用与宿主共享的 TextMateSharp，主题与聊天代码块一致（DarkPlus / LightPlus），对完整的旧 / 新文本带状态逐行 tokenize，设有行数、行长和耗时上限，超出退回纯文本。
+  - **语法高亮**：`TextMateHighlighter` 用随插件分发的 TextMateSharp，主题与聊天代码块一致（DarkPlus / LightPlus），对完整的旧 / 新文本带状态逐行 tokenize，设有行数、行长和耗时上限，超出退回纯文本。
   - **可编辑**：并排模式改为两个 AvaloniaEdit 编辑器，右侧可编辑，防抖 300ms 重算 diff。
   - **保存**：`FileTextStore` 先读当前文件（本地经 `LocalPathScope`、远端先确认会话在线），内容和基线不一致时让用户选覆盖 / 重新载入 / 取消；写入保留 BOM，换行统一成原文件占多数的那种；不走 Agent 审批。只有片段时提供「载入完整文件」，倒着套用 patch 重建旧内容。
   - **限制**：SDK 没有关闭前的钩子，关闭有未保存修改的标签不会拦截。
