@@ -84,7 +84,7 @@ dotnet build -c Release -t:PackVpx               # → bin/vpx/acme.snippets-0.1
 The generated base `.csproj` has a single build-support dependency:
 
 ```xml
-<PackageReference Include="VelaShell.PluginSdk.Build" Version="2.1.4" />
+<PackageReference Include="VelaShell.PluginSdk.Build" Version="2.2.1" />
 ```
 
 The template release script maintains this version; do not infer a new version from this page. The package provides
