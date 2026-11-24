@@ -201,6 +201,8 @@ Key Management and Snippets are moved out of the Settings Center and become stan
 | Terminal color scheme | Custom colors, ANSI palette | Collapse advanced editing when using a preset; expand after entering custom mode | ⏳ Pending (to be done with the Phase 4 Appearance/Terminal page restructuring) |
 | Session logs | Terminal session log retention days | Hide when the parent is off | ✅ Implemented |
 
+**General → Behavior → Keep terminal output on SSH reconnect** defaults to on and stays visible because it applies to both manual and automatic reconnects. The session divider shows local time in `yyyy-MM-dd HH:mm:ss` format. With the switch off, the next successful reconnect clears the tab’s screen and scrollback.
+
 ## 11. Recommended Implementation Order
 
 ### Phase 1: Fix Behavioral Correctness (✅ Completed 2026-07-11)
