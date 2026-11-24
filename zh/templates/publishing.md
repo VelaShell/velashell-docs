@@ -26,7 +26,7 @@
 | --- | --- | --- |
 | `version` | 语义化版本,`1.2.0` / `1.2.0-beta.1` | 商店与升级逻辑按它排序 |
 | `apiLevel` | 高于宿主支持的代际 → 拒载 | 只在**破坏性**变更时才动,平时保持 `1` |
-| `minHostVersion` | 低于它的宿主 → Incompatible | 用到了宿主新功能却不声明 = 老宿主上运行期炸 |
+| `minHostVersion` | 低于它的宿主 → Incompatible | 只填写插件首次依赖的新宿主 API 所对应的第一个兼容宿主发布;不要填 Avalonia 版本或 `minSdkVersion` |
 | `minSdkVersion` | 宿主内置 SDK 低于它 → Incompatible | **用到新 SDK 面的插件必须声明**,见下 |
 
 `apiLevel` 太粗:它只管破坏性变更,而 SDK 的新增接口方法/DTO 字段不算破坏性。
@@ -61,14 +61,17 @@ dotnet build -c Release
 - `EnableDynamicLoading=true` → 生成 `deps.json`(ALC 解析插件自带依赖的依据)、
   依赖复制到输出目录;
 - `plugin.json` 复制进输出目录(宿主的插件发现只认它);
-- **共享程序集不落地**:`VelaShell.PluginSdk.dll` 与 `Avalonia*.dll` 被排除出输出与包 ——
+- **共享程序集不落地**:`VelaShell.PluginSdk.dll` 与 `Avalonia*.dll` 被排除出输出与 `.vpx` ——
   装载器强制它们回落到宿主那一份(跨 ALC 的类型必须同一),带着只是徒增体积;
-- Avalonia 版本一致性检查(不一致直接报 `VELA1001`,而不是等用户装上后在运行期
-  表现为控件类型转换失败);
+- 对插件**直接引用**的 `Avalonia` / `Avalonia.AvaloniaEdit`,核对解析出的实际包版本与
+  `VelaAvaloniaVersion` / `VelaAvaloniaEditVersion`;
 - 构建后的清单校验(与宿主装载时同一套规则)。
 
-> **名字以 `Avalonia` 开头的第三方包用不了**:装载器按前缀强制共享,而宿主并不提供它们。
-> 选用不以 `Avalonia` 开头的包,或把该依赖交给宿主。
+`.Build` 与 SDK 不依赖或传递 Avalonia。使用 AXAML/UI 的插件必须从目标宿主
+`VelaShell/src/Directory.Packages.props` 读取准确版本,设置相应属性并显式写
+`PackageReference ... ExcludeAssets="runtime"`;直接引用提供 AXAML/compiler 的 build/compile 资产。
+不使用这些包时不要声明属性。名字以 `Avalonia` 开头、但宿主未提供的第三方包仍会被装载器按共享程序集
+处理,不能靠打包进去绕过。
 
 原生依赖(P/Invoke 的 `.so` / `.dylib` / `.dll`)随 `deps.json` 的 RID 资产解析,
 你需要为目标平台各出一份包,或在包里带齐全部 RID 的原生资产。

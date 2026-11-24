@@ -28,7 +28,7 @@ digit, ≤64 characters.
 | --- | --- | --- |
 | `version` | semver, `1.2.0` / `1.2.0-beta.1` | The marketplace and upgrade logic order by it |
 | `apiLevel` | Higher than the host supports → refused | Only bump on **breaking** changes; normally stays `1` |
-| `minHostVersion` | Older host → Incompatible | Using new host features without declaring it fails at runtime on old hosts |
+| `minHostVersion` | Older host → Incompatible | Use the first compatible host release that provides a newer host API the plugin uses; never put an Avalonia version or `minSdkVersion` here |
 | `minSdkVersion` | Host's bundled SDK older → Incompatible | **Required for plugins that use newer SDK surface** |
 
 `apiLevel` is too coarse: it only covers breaking changes, and added interface methods or DTO
@@ -67,15 +67,18 @@ A plugin project references exactly one package, `VelaShell.PluginSdk.Build`, wh
   dependencies) and copies dependencies to the output;
 - `plugin.json` copied into the output directory (the host discovers plugins by that file);
 - **shared assemblies excluded**: `VelaShell.PluginSdk.dll` and `Avalonia*.dll` never enter the
-  output or the package — the loader forces them to fall back to the host's copies (types must
-  be identical across ALCs), so shipping them only bloats the package;
-- an Avalonia version consistency check (`VELA1001` at build time instead of a control cast
-  failure on a user's machine);
+  output or `.vpx` — the loader forces them to fall back to the host's copies (types must be
+  identical across ALCs), so shipping them only bloats the package;
+- for plugin **direct references** to `Avalonia` / `Avalonia.AvaloniaEdit`, a check that resolved
+  package versions match `VelaAvaloniaVersion` / `VelaAvaloniaEditVersion`;
 - post-build manifest validation with the same rules the host applies.
 
-> **Third-party packages whose name starts with `Avalonia` cannot be used**: the loader shares
-> them by prefix, and the host does not provide them. Pick a package with a different name, or
-> have the host provide the dependency.
+`.Build` and the SDK do not depend on or transmit Avalonia. A plugin using AXAML/UI must read the exact
+versions from the target host's `VelaShell/src/Directory.Packages.props`, set the corresponding properties,
+and add explicit `PackageReference ... ExcludeAssets="runtime"` items; direct references provide the
+AXAML/compiler build and compile assets. If those packages are not used, declare no such properties. A package
+whose name starts with `Avalonia` but is not provided by the host is still treated as shared by the loader and
+cannot bypass that rule by being bundled.
 
 Native dependencies (P/Invoke `.so` / `.dylib` / `.dll`) resolve through the RID assets in
 `deps.json`; ship one package per target platform, or include every RID's native assets.

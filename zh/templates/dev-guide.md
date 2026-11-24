@@ -15,9 +15,10 @@
   两种模式下**插件源码完全一致**。
 - **依赖隔离**:插件自带依赖(任意 NuGet 包)按其 `deps.json` 在插件目录内解析,
   与宿主互不干扰;仅两类程序集强制与装载方共享保证类型同一:
-  `VelaShell.PluginSdk` 与 `Avalonia*`(所以 Avalonia 版本必须与宿主一致,见 §5.9)。
-- **契约细腰**:插件引用 `VelaShell.PluginSdk`(仅 BCL 依赖);UI 直接用完整的
-  Avalonia(compile-only 引用)。SDK 与 Avalonia 程序集**永远不要**复制进插件目录。
+  `VelaShell.PluginSdk` 与 `Avalonia*`(所以 UI 插件必须与目标宿主对齐,见 §5.9)。
+- **契约细腰**:插件引用 `VelaShell.PluginSdk`(仅 BCL 依赖);UI 插件按目标宿主直接引用完整的
+  Avalonia(compile-only 引用)。SDK 与 Avalonia 的共享运行时程序集**永远不要**复制进插件目录。
+  `.Build` 不传递 Avalonia,也不导出 Avalonia pin;没有匹配 UI 依赖的插件不需要这些属性。
 - **故障隔离**:进程内模式靠全路径守卫(单插件失败只标自己 Failed,但防不了
   死循环/内存失控);隔离模式靠进程边界(硬故障也只损失该插件)。
 - **零启动开销**:发现只读 `plugin.json` 不碰程序集,且整个发现+激活在主窗口
@@ -89,17 +90,44 @@ cd Snippets
 dotnet build -c Release -t:PackVpx               # → bin/vpx/acme.snippets-0.1.0.vpx
 ```
 
-生成的 `.csproj` 只有一行依赖:
+生成的基础 `.csproj` 只有一行构建支持包依赖:
 
 ```xml
 <PackageReference Include="VelaShell.PluginSdk.Build" Version="2.1.4" />
 ```
 
-这一个包把插件工程需要的东西一并带到:契约程序集 `VelaShell.PluginSdk`、**与宿主版本
-严格一致的 Avalonia**(含它的 AXAML 编译器)、`EnableDynamicLoading`、`plugin.json` 进
-输出目录、共享程序集不落地、清单编译期校验,以及 `PackVpx` 目标。**不要**再单独引用
-`VelaShell.PluginSdk` 或 `Avalonia` —— 版本对不上会在构建期直接报 `VELA1001`,而不是
-等到用户装上插件才在运行期表现为控件类型转换失败。
+这里的版本号由模板发版脚本维护,不要从本页另行推断。这个包提供契约程序集
+`VelaShell.PluginSdk`、`EnableDynamicLoading`、`plugin.json` 输出、共享运行时资产排除、清单编译期校验
+以及 `PackVpx` 目标;它**不依赖 Avalonia,也不传递任何 Avalonia pin**。基础、协议和工作台插件若没有
+UI 依赖,不需要添加 Avalonia 属性或包。
+
+`velaplugin-ui` 或你自己加入 AXAML/UI 时,要从目标宿主 `VelaShell/src/Directory.Packages.props`
+读取准确版本并在插件工程直接引用:
+
+```xml
+<PropertyGroup>
+  <VelaAvaloniaVersion>12.2.0</VelaAvaloniaVersion>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Avalonia" Version="$(VelaAvaloniaVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+若插件使用 `Avalonia.AvaloniaEdit`,还要添加同一宿主的版本与直接引用:
+
+```xml
+<PropertyGroup>
+  <VelaAvaloniaEditVersion>12.0.0</VelaAvaloniaEditVersion>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Avalonia.AvaloniaEdit" Version="$(VelaAvaloniaEditVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+上面的 `12.2.0` 和 `12.0.0` 只是示例,必须与目标宿主一致。不使用 `Avalonia.AvaloniaEdit` 时,不要声明
+它的属性或 PackageReference。`.Build` 会核对实际解析的包版本与这些属性。直接引用保留 AXAML/compiler 的
+build/compile 资产,运行时共享 DLL 不会进入输出或 `.vpx`。不要把 `VelaShell.PluginSdk.dll` 或
+`Avalonia*.dll` 放进插件目录。
 
 | 包 | 谁引用 | 作用 |
 | --- | --- | --- |
@@ -285,7 +313,7 @@ dotnet new velaplugin-workspace -n EchoDesk  --publisher acme   # 工作台连�
 | `publisher` | | 发布者标识(将来与签名公钥绑定,参与信任判定) |
 | `author` | | 作者,展示在插件管理页(如 `"Joe <joe@example.com>"`,≤128 字符、不许控制字符)。缺省时管理页退回显示 `publisher` |
 | `apiLevel` | | 默认 1;高于宿主支持的代际 → 标记 Incompatible 拒载 |
-| `minHostVersion` | | 要求的最低宿主版本;不满足 → Incompatible |
+| `minHostVersion` | | 要求的最低宿主版本;不满足 → Incompatible。只填写插件首次依赖的新宿主 API 所对应的第一个兼容宿主发布,不要填写 Avalonia 版本或 `minSdkVersion` |
 | `minSdkVersion` | | 要求的最低**插件 SDK** 版本(如 `1.1.0`);不满足 → Incompatible。**用到了新 SDK 面的插件必须声明它**:`apiLevel` 只在破坏性变更时才动,而新增的接口方法与 DTO 字段不算破坏性 —— 不声明的话老宿主会把插件装上、激活,然后在第一次调用新方法时抛 `MissingMethodException`。SDK 版本与宿主版本刻意解耦,所以 `minHostVersion` 表达不了这件事 |
 | `activationEvents` | | 省略或含 `"onStartup"` = 启动激活;`"onCommand:<命令id>"` / `"onProtocol:<协议id>"` / `"onWorkspace:<连接类型id>"` = **惰性激活**(命中占位命令、或用户选中该页签才装载;须在对应的 `contributes.*` 里声明) |
 | `contributes.commands` | | 声明式命令占位 `[{id,title,category}]`:发现期即进命令面板,id 必须以插件 id 为前缀;激活时插件应 `Register` 同 id 的真实处理器替换占位 |
@@ -575,16 +603,30 @@ context.Events.LocaleChanged    += locale => ...;
 插件用**完整的 Avalonia** 自行设计界面:编译期 AXAML 或纯代码任选,自带样式、
 资源、国际化,也可以引入任意第三方组件包(随插件目录分发,ALC 隔离互不干扰)。
 
-**唯一硬约束:Avalonia 版本与宿主一致。** 这件事 `VelaShell.PluginSdk.Build` 已经替你办了:它把 Avalonia
-以精确版本、compile-only 的方式传给插件工程(包里那条引用带 `ExcludeAssets="runtime"`)—— Avalonia 的 dll
-绝不复制进插件目录,运行时由装载方共享同一套(进程内 = 宿主的;隔离进程 = PluginHost 自带的)。
-锁的是哪一版以 SDK 仓库 `Directory.Build.props` 的 `VelaAvaloniaVersion` 为准(SDK 2.1.5 锁的是 12.1.4)。
-**插件工程不要自己再写 Avalonia 的 `PackageReference`**:解析出来的版本对不上时构建期直接报 `VELA1001`。
+**唯一硬约束:Avalonia 版本与目标宿主一致。** `VelaShell.PluginSdk.Build` 不再传递 Avalonia,
+也不导出 Avalonia pin。宿主在 `VelaShell/src/Directory.Packages.props` 中声明准确版本,UI 插件必须把它
+映射到自己的属性并直接引用,以保留 AXAML/compiler 的 build/compile 资产:
 
-基于 Avalonia 的第三方组件包(如控件库)则**正常引用**(它们的 dll 要随插件分发)。例外是**程序集名以
-`Avalonia` 开头**的包(如 `AvaloniaEdit`):装载器按名字前缀判定共享,它们同样回落到装载方那一份 ——
-只能用宿主自己带着的,而且同样 compile-only、与宿主同版本(SDK 导出 `$(VelaSdkPinnedAvaloniaEditVersion)` 供核对),
-见 [SDK 参考 §7](../sdk/sdk-reference.md)。
+```xml
+<PropertyGroup>
+  <VelaAvaloniaVersion>12.2.0</VelaAvaloniaVersion>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Avalonia" Version="$(VelaAvaloniaVersion)" ExcludeAssets="runtime" />
+</ItemGroup>
+```
+
+`12.2.0` 只是示例,以目标宿主的 `src/Directory.Packages.props` 为准。插件使用
+`Avalonia.AvaloniaEdit` 时,再声明同一宿主的 `VelaAvaloniaEditVersion` 并显式引用该包,同样
+`ExcludeAssets="runtime"`;不使用它就不需要这个属性。`.Build` 会核对实际解析的包版本与目标属性,
+版本漂移在构建期失败。运行时共享 DLL 不复制到插件目录或 `.vpx`。名字以 `Avalonia` 开头、但宿主
+没有提供的第三方包仍会被装载器当作共享程序集处理,不能靠插件自带绕过。
+
+从旧 `.Build` 迁移到不再传递 Avalonia 的组合时,以上是**一次性迁移**:按目标宿主添加实际需要的
+直接引用,再验证构建与 `PackVpx`。已经发布的 SDK/.Build 包不会因本指南追溯改变。之后宿主升级
+Avalonia 时,只需在要针对该宿主重编时同步属性与直接引用,不必为此发布新 SDK/.Build,也不必仅因
+Avalonia 更新递增插件版本或 `minHostVersion`。`minHostVersion` 应填写插件首次依赖的那个**宿主版本**
+(提供所用新宿主 API 的第一个发布),不能填写 Avalonia 版本或 `minSdkVersion`。详见 [SDK 参考 §7](../sdk/sdk-reference.md)。
 
 打开面板:内容工厂由宿主在 **UI 线程**调用,返回你的控件即可:
 

@@ -13,7 +13,7 @@ step-by-step walkthrough, read the [Development Guide](../templates/dev-guide.md
 
 | Package                         | Repository                                                                                | Referenced by                          | Contents                                                                                                                                       |
 | ------------------------------- | ----------------------------------------------------------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`VelaShell.PluginSdk.Build`** | this repository (since 2026-09-11; previously velashell-plugin-cli)                       | **the plugin project (this one only)** | MSBuild props/targets, a version-pinned Avalonia, the bundled packer, manifest validation, the `PackVpx` target                                |
+| **`VelaShell.PluginSdk.Build`** | this repository (since 2026-09-11; previously velashell-plugin-cli)                       | **the plugin project (this one only)** | MSBuild props/targets, shared-runtime exclusion, the bundled packer, manifest validation, the `PackVpx` target                                |
 | `VelaShell.PluginSdk`           | this repository                                                                           | pulled in transitively                 | The contract assembly: entry interface, `IPluginContext` and every capability interface, DTOs, manifest model, `.vpx` container, host registry |
 | `VelaShell.PluginSdk.Testing`   | this repository                                                                           | the plugin's **test** project          | `TestPluginContext` and in-memory doubles for every capability                                                                                 |
 | `VelaShell.Plugin.Cli`          | [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli)             | developer machine (dotnet tool)        | `vela-plugin`: inner loop, validation, packing, signing, health check                                                                          |
@@ -24,12 +24,17 @@ The `PackageReference` line a plugin project needs — **including the current v
 `VelaShell.PluginSdk.Build`, which now versions independently of this SDK, so repeating it here
 would only guarantee it goes stale.
 
-Do **not** reference `VelaShell.PluginSdk` or `Avalonia` separately — a version mismatch is a
-build error (`VELA1001`) instead of a runtime control-cast failure on a user's machine.
+`.Build` and `VelaShell.PluginSdk` do not depend on Avalonia and do not export an Avalonia version pin.
+The contract assembly depends only on the BCL. A plugin that has UI must reference the Avalonia version used by
+its target host directly; a plugin with no UI or no matching `Avalonia*` dependency does not need to declare any
+Avalonia property. `VelaShell.PluginSdk` is the **only contract type source shared by host and plugin**, so a
+third-party dependency inside it would be imposed on every plugin.
 
-The contract assembly depends only on the BCL. That is a discipline: it is the **only type
-source shared between host and plugin**, so a third-party dependency inside it would be imposed
-on every plugin.
+The host declares exact Avalonia package versions centrally in `VelaShell/src/Directory.Packages.props`. A plugin
+maps those values to `VelaAvaloniaVersion` (and, only when it uses `Avalonia.AvaloniaEdit`, the optional
+`VelaAvaloniaEditVersion`) and writes explicit matching `PackageReference` items. `.Build` checks the resolved
+package versions against those target properties; AXAML/compiler build and compile assets come from the plugin's
+direct references, while shared runtime assets are kept out of the `.vpx`. See [Development Guide §5.9](../templates/dev-guide.md).
 
 ---
 
@@ -395,7 +400,7 @@ and **2.0 onwards is `apiLevel 2`**.
 | 1.4       | `HostRegistry` (host self-registration for `vela-plugin`)                                                                                                                                                                                                                                                                                                                                                                            | **No** — toolchain surface, plugin code never calls it |
 | **1.5**   | Connection-form additions for protocols: `ProtocolFeatures.NoEndpoint` (hide the port column), `ProtocolSettingKind.DynamicChoice` + `IProtocolChoiceSource` (choices fetched when the form opens), `AllowsCustomValue` / `HostKind` / `HostChoices` / `HostAllowsCustomValue` (editable combo boxes; the host column can be a combo too). Driven by the serial plugin — ports are hot-plugged, baud rates have non-standard values. | Yes, if used (`1.5.0`)                                 |
 | **2.0**   | **Generation bump (`apiLevel` 1 → 2)** — see "Migrating to 2.0" below. The surface it carries is `IHostThemeApi` (`ctx.Theme`, see §3.5): theme identity, the fully resolved palette, and a `Changed` signal covering every kind of theme change. Before it, a plugin could only see the three values of `IHostInfo.Theme` — no named theme, no accent, and no change at all when switching within the same light/dark variant.      | No — express it with `apiLevel: 2`                     |
-| **2.0.1** | The "open a saved session" trio on the sessions capability: `ISessionsApi.ListSavedAsync` / `OpenAsync` / `CloseAsync`, with `SavedSessionInfo`, `SessionOpenOptions` and `PluginSessionOpenException`. Before it a plugin could only act on machines the user had **already connected by hand**, which caved in half of every unattended use. (2.0.2 added no contract; it only raised the Avalonia pin to 12.1.2.)                                                                                       | Yes, if used (`2.0.1`)                                 |
+| **2.0.1** | The "open a saved session" trio on the sessions capability: `ISessionsApi.ListSavedAsync` / `OpenAsync` / `CloseAsync`, with `SavedSessionInfo`, `SessionOpenOptions` and `PluginSessionOpenException`. Before it a plugin could only act on machines the user had **already connected by hand**, which caved in half of every unattended use. (2.0.2 added no contract; under the then-existing integration model it raised the Avalonia pin to 12.1.2. The current SDK no longer exports an Avalonia pin.)                                                                                       | Yes, if used (`2.0.1`)                                 |
 | **2.0.3** | First cut at tab icons: an `IconPathData` / `IconViewBoxSize` / `IconIsFilled` trio on each of `ProtocolDescriptor` and `WorkspaceDescriptor`. ⚠️ **That trio is superseded by `Icon` in 2.0.4 — do not use it.** Panels were missing entirely at the time, and spelling one concept out as three parallel properties in two places was a design mistake to begin with. Replaced the next day; no plugin was affected. | ❌ Withdrawn — go straight to 2.0.4 |
 | **2.0.4**   | Tab icons collapsed into a single entry point, `PluginIcon` (see §3.6), shared by all three places: `ProtocolDescriptor.Icon`, `WorkspaceDescriptor.Icon`, and the **new** `PanelOptions.Icon` — panel tabs do not travel the descriptor path, which 2.0.3 missed. Ships with the `PluginIcon.Stroked` / `PluginIcon.Filled` factories. | Yes, if used (`2.0.4`) |
 | **2.0.6** | `IProtocolStreamUpload`: an interface an `IProtocolFileSystem` may **optionally** also implement — write a sequential stream to a remote file (overwrite). Lets the host relay a file between two remote sessions through memory instead of a temporary file (the remote + remote dual-pane file tab). The stream belongs to the caller; it may not be seekable, so the length is passed separately; no resume. Not implementing it is fine: the host then treats the protocol as unable to upload from a stream. Additive, `apiLevel` unchanged. | Yes, if used (`2.0.6`) |
@@ -471,8 +476,10 @@ loop: `vela-plugin dev init` → F5, see the [CLI Manual](../cli/cli.md).
    directory through `deps.json`, so you may reference any NuGet package without colliding with
    the host.
 2. **Two assembly families are always shared**: `VelaShell.PluginSdk` and `Avalonia*` fall back
-   to the loading side. Your Avalonia version must match the host's (the SDK package pins it),
-   and third-party packages whose name starts with `Avalonia` cannot be used.
+   to the loading side. Your Avalonia version must match the target host's; the SDK package no longer pins it.
+   A UI plugin must reference the target host's version directly as described in [Development Guide §5.9](../templates/dev-guide.md).
+   A third-party package whose name starts with `Avalonia` but is not provided by the host is still resolved as
+   shared and cannot be used.
 3. **Development plugins load from a shadow copy** (`~/.velashell/dev-shadow/<id>/gen-N`), so
    the running host does not lock your `bin` and Reload on the manager page picks up a rebuild.
    **Installed in-process plugins also load from a shadow copy** (`~/.velashell/plugin-shadow/<id>/gen-N`):

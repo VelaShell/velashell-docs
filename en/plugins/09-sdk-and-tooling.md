@@ -5,8 +5,8 @@
 >
 > - The deliverables are **five packages**: `VelaShell.PluginSdk` (contract),
 >   `VelaShell.PluginSdk.Testing` (doubles), `VelaShell.PluginSdk.Build`
->   (**the only package a plugin project references**: MSBuild props/targets, dependency pinning,
->   and the packer that ships inside it), `VelaShell.Plugin.Cli` (dotnet tool `vela-plugin`),
+>   (**the only package a plugin project references**: MSBuild props/targets, shared-runtime exclusion and
+>   manifest/version checks, and the packer that ships inside it), `VelaShell.Plugin.Cli` (dotnet tool `vela-plugin`),
 >   and `VelaShell.Plugin.Templates` (`dotnet new`). There is no `VelaShell.PluginProtocol`
 >   package — the RPC wire protocol lives in the contract assembly (a lightweight
 >   protocol rather than StreamJsonRpc, see the note in 05).
