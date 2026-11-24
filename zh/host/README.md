@@ -14,6 +14,10 @@ VelaShell 主程序自身的架构、设计规格与调研记录。English: [`..
 | [快捷键参考.md](快捷键参考.md) | 全部键盘快捷键与鼠标手势(与 `ShortcutCatalog` 同源,非手抄) |
 | [settings-audit.md](settings-audit.md) | 设置项审计台账与整改记录 |
 
+## 可选的 X 窗口截图编码器
+
+在 VelaShell 仓库根目录运行 `dotnet build src/VelaShell/VelaShell.csproj -p:UseSimdSkiaPng=true` 可用 SimdSkia.Imaging 0.1.12 导出 X 窗口的 PNG。省略该属性即使用原编码器，不引入 SimdSkia 依赖。开关不影响剪贴板、终端绘制或硬件加速。不要把桌面后端一起替换：SimdSkia.Avalonia.Desktop 0.1.12 在 Avalonia 12.2.0 上启动时缺少 `CreateStreamGeometryBuilder` 实现。
+
 ## 功能设计与调研
 
 | 文档 | 内容 |
