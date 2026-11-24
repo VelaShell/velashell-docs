@@ -1173,7 +1173,7 @@ Right-click a session row in the sidebar to open it (200px, `bg-surface`, corner
 
 Right-clicking a row outside the selection opens the menu above as usual and ends the selection.
 
-**Group menu** (right-click a group row). Counts, open, health check, and export include connections in all descendant groups, even when a filter hides them. Choose New Child Group to create a group under this one. In the connection editor, entering `Projects > A > Production` creates any missing groups when you save.
+**Group menu** (right-click a group row). Counts, open, health check, and export include connections in all descendant groups, even when a filter hides them. Choose **Rename** to change the group name. Paths update for all descendants; membership and order stay the same. The new name cannot be blank, contain `>`, or match a sibling's name (ignoring case). Choose New Child Group to create a group under this one. In the connection editor, entering `Projects > A > Production` creates any missing groups when you save.
 
 - Open all connections (`plug`, accent primary action) — same concurrency and confirmation as "Open N connections"; nothing
   happens on an empty group
