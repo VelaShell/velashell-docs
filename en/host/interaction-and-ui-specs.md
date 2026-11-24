@@ -113,7 +113,9 @@ From top to bottom:
      JSON / CSV spreadsheet / OpenSSH config (the third since 2026-10-24: `~/.ssh/config` Host blocks, SSH / SFTP only, no
      passwords). "Sort groups by name" is a one-off reorder
      (natural order: "Rack 2" before "Rack 10"; the current locale's collation, so Chinese sorts by pinyin), and the order can
-     still be adjusted by hand afterwards.
+     still be adjusted by hand afterwards. It also contains **Channel Manager** (`ChannelManager_Title`), which opens the one
+     modeless manager owned by the current main window; reopening activates it and restores it from a minimized state instead of
+     creating a second window.
 2. **Session resource tree (`fill_container`, scrollable)**: collapsible group list occupying most of the sidebar.
    - **Filter box** (since 2026-10-24): pinned above the tree and not scrolled with it (one in the expanded sidebar and one in the collapsed rail's flyout, bound to the same text), placeholder “Filter by name, host, tag or note”.
      - Filters by name / host / tag / note / the name of the containing group: the text is split on whitespace, **every word must match**, and different words may match different fields; case-insensitive, contiguous substrings. The username is not used (typing `root` would keep almost everything). Typing a group name lays out the whole group.
@@ -740,16 +742,22 @@ Rules from Settings → Output Rules (§14.6) whose action is "Auto-answer" send
 
 ### 6.1 Multi-Terminal Sync Input Channel (replaces the original Broadcast Input Bar)
 
-- Entry is in the tab context menu under “Sync Input”: four fixed channels A/B/C/D, distinguished by color (pink/blue/orange/green), plus “Leave All Channels”.
+- Entry is in the tab context menu under “Sync Input”: six fixed channels A/B/C/D/E/F, distinguished by color (pink/blue/orange/green/purple/red), plus “Leave All Channels”.
 - A whole group or a multi-selection can also be opened from the explorer with synced input (since 2026-10-24): the new terminal tabs join the first free channel together; see §12 for the rules.
 - Peer model: any user input in a channel (keyboard/IME/paste) is copied in real time to the other tabs in that channel. Switching to any tab in the channel preserves the same shared input behavior. Each tab can belong to only one channel at a time.
-- Tabs in a channel show the channel letter (A/B/C/D, in the channel color) before the status dot in the tab header. A channel bar appears above the terminal: color swatch + “Input synchronized in channel X” + [Pause] [Leave Channel] [Close Channel].
+- Tabs in a channel show the channel letter (A/B/C/D/E/F, in the channel color) before the status dot in the tab header. A channel bar appears above the terminal: color swatch + “Input synchronized in channel X” + [Pause] [Leave Channel] [Close Channel].
   - **Pause**: this tab temporarily stops sending and receiving channel input; click again to resume.
   - **Leave Channel**: only this tab leaves. The close button on the right side of the bar has the same effect.
   - **Close Channel**: all tabs in the channel leave together.
 - Forward directly to each target PTY (the bridge’s SendRaw), without passing through input events on the receiving terminal control. This prevents forwarding loops and does not trigger command-completion popups in non-focused tabs. Smart suggestions appear only in the tab where the user is typing.
 - Disconnected tabs do not receive forwarded input, gated by `IsConnected`. Closing a tab automatically leaves its channel. Multi-target dispatch of quick commands no longer goes through a second channel forwarding step, preventing duplicate injection.
 - Auto-answers from output rules (§5.2.3) are not forwarded through the channel by default (a rule can opt in); input forwarded by the channel counts as "typing locally" on the receiving side, so the receiving tab's triggers do not answer that line.
+
+#### 6.1.1 Channel Manager window (#800)
+
+- The Explorer **More** menu and the sync banner both expose `ChannelManager_Title`; the banner entry preselects the active tab's channel. Each main window owns at most one modeless manager. Reopening activates the existing window and restores it from minimized state rather than creating another; closing the main window releases it, and closing the manager disposes its model so it can be reopened.
+- Open **Explorer → More → Channel Manager** for all open terminals, or open it from the sync banner to filter by the current channel. Each open tab gets its own row under its Explorer group. Expand a group to see its terminals, or tick the group to select all matching descendants, even when collapsed.
+- Use the count chips (All, Not joined, A–F) to filter, or press **Ctrl+F** to search names, hosts and group paths. Click a radio button to assign one terminal; use the controls below the selection count to move, pause, resume or remove the selection. Filtering drops selections that no longer match. Moving preserves pause state; offline members can leave but cannot move, pause or resume.
 
 ### 6.2 Remote + remote dual pane (#524)
 
@@ -1153,7 +1161,7 @@ Right-click a session row in the sidebar to open it (200px, `bg-surface`, corner
   shows in its own tab
 - Open N Connections with Synced Input (`link-2`, since 2026-10-24) — opens only what yields a terminal (SSH and plugin
   terminal protocols; SFTP / FTP / workspaces are skipped), always as new tabs, and puts them into the first free synced
-  input channel (A → D, §6.1; free = no tab in it and not reserved by another batch that is still opening); when all four
+  input channel (A → F, §6.1; free = no tab in it and not reserved by another batch that is still opening); when all six
   channels are in use it opens nothing and asks you to close one first. Tabs of the same profiles that are already open are
   left alone and not pulled into the channel (one may be sitting in vim, or be in another channel). Concurrency and
   confirmation are the same as "Open N connections". Each one joins the channel as soon as it finishes (connected, or failed
