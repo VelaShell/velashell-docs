@@ -332,4 +332,4 @@ The shared-password list that pops up against the cursor row when a password pro
 | Delete a whole file reference | `Backspace` | — |
 | Commit the session rename | `Enter` | — |
 | Cancel the session rename | `Esc` | — |
-| Close the AI secondary window | `Esc` | — |
+| Close the VelaShell Copilot window | `Esc` | — |
