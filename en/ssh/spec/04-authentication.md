@@ -421,6 +421,8 @@ fingerprint in the list, and that is correct.
 
 ### 4.6 Private key files
 
+Key loading reads up to 1 MiB from the open file and probes one additional byte to detect overflow. An oversized private key raises `KeyFormatInvalid`. Direct text input is limited to 1,048,576 UTF-16 code units.
+
 Local private keys are read by `SshPrivateKeyFile.LoadAsync` / `Parse`, which recognizes the format from the file header. Supported key
 types are Ed25519, RSA, and ECDSA P-256/384/521. 〔Decision〕An ECDSA curve is **recognized by the curve itself (its OID)**, not by its size: PKCS#8 / SEC1 can carry any curve,
 and secp256k1 and brainpoolP256r1 are 256-bit too — they used to be labelled `nistp256` and handed to the server, the signature failed to verify, and the only symptom was "this public key is not accepted".

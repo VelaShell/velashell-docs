@@ -457,6 +457,7 @@ and wildcard matches are sorted ordinally — directory enumeration order differ
 - 〔Decision〕**One load reads at most 256 files** (including the top-level one, `MaxIncludedFiles`); once the budget is spent, further `Include`s are not expanded and no error is raised.
   Cycle detection looks only at the current chain and the depth limit only bounds depth: when N files `Include dir/*` each other, every chain without a cycle is walked,
   which is on the order of N!/(N−k)! expansions (about ten million for 10 files).
+- Path arguments and directory entries visited during wildcard expansion share a budget of 4,096 per load. An incomplete directory scan yields no matches, preserving lexical precedence. Cancellation interrupts the scan.
 - 〔Decision〕**Only regular files are read, at most 1 MiB each** (`MaxConfigFileBytes`); a larger file is skipped entirely. **The size is checked before opening**:
   device files and FIFOs report a size of 0; `Include /dev/zero` would read forever, and opening a FIFO blocks until someone writes to it —
   the cancellation token cannot reach either case. Anything of size 0 is never opened (a genuinely empty file has no settings anyway). Reading is still capped,
