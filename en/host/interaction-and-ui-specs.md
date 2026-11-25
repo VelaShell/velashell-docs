@@ -602,6 +602,7 @@ Rules from Settings → Output Rules (§14.6) whose action is "Auto-answer" send
     - **Right-click “Open”** (the menu's primary action): downloads to `%TEMP%/VelaShell/builtin-edit/<8 chars>/` and
       shows the built-in editor (a modeless window). Files over 5 MB are not opened; the message says to download and edit
       locally. Uploading back is the editor's Save / `Ctrl+S` — every save uploads once, with no file watching.
+      The editor highlights the current line and shows the caret’s line and column in the status bar. Toggle word wrap in the title bar to fit long lines to the window. The file keeps its original line breaks.
       The temporary copy is deleted when the window closes; copies left behind by a crash or a killed process are swept in
       the background after the next start (since 2026-10-24: only subdirectories of `builtin-edit` named with 8 hex digits,
       deleted once neither the directory nor anything in it has changed for 7 days; what cannot be deleted waits for the next
