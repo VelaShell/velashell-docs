@@ -15,7 +15,7 @@ It is an **independent implementation**, not a fork of any existing library.
 ## Where the code lives
 
 Since 2026-09-23 the library lives in the host repository and is no longer published to NuGet on its
-own (it used to be `VelaShellLabs/velashell-ssh`). Paths such as `src/…`, `tests/…` and
+own (it used to be `VelaShell/velashell-ssh`). Paths such as `src/…`, `tests/…` and
 `scripts/ssh/…` in these documents refer to the **host repository**:
 
 | Path | Contents |

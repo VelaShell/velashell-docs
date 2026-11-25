@@ -2,13 +2,13 @@
 
 > 📦 **Where the code lives** (updated 2026-08-30): this directory is the **host-side design
 > blueprint** for the plugin system; the code sits in several repositories — the plugin contract
-> SDK is in [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk);
+> SDK is in [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk);
 > the `vela-plugin` CLI and `VelaShell.PluginSdk.Build` are in
-> [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli);
+> [velashell-plugin-cli](https://github.com/VelaShell/velashell-plugin-cli);
 > the `dotnet new` templates are in
-> [velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates);
+> [velashell-plugin-templates](https://github.com/VelaShell/velashell-plugin-templates);
 > the first-party plugins (Redis / S3 / Telnet / Serial) are in
-> [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins);
+> [velashell-plugins](https://github.com/VelaShell/velashell-plugins);
 > the host itself is [joesdu/VelaShell](https://github.com/joesdu/VelaShell).
 > On this page (and in blueprints 01–15), `plugin-sdk/…`, `tools/…` and `templates/…` refer to the
 > first three; `plugins/VelaShell.Plugin.…` and `tests/VelaShell.Plugin.*.Tests` refer to the fourth.

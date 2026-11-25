@@ -2,7 +2,7 @@
 
 English: [RDP plugin: design and use](../../en/host/rdp-plugin-design-and-use.md)。
 
-`velashell.rdp` 位于 [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Rdp),是进程内工作台插件,在 Windows、Linux、macOS 的 Avalonia 标签页中显示远程桌面。引擎是**纯托管 C# 的 RDP 客户端**,不依赖原生 RDP 库,不捆绑原生二进制,传输代码与托管 DTLS 依赖随包分发,全 RID 通用。
+`velashell.rdp` 位于 [velashell-plugins](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Rdp),是进程内工作台插件,在 Windows、Linux、macOS 的 Avalonia 标签页中显示远程桌面。引擎是**纯托管 C# 的 RDP 客户端**,不依赖原生 RDP 库,不捆绑原生二进制,传输代码与托管 DTLS 依赖随包分发,全 RID 通用。
 
 ## 架构与范围
 
@@ -138,7 +138,7 @@ UDP-R 使用 `SslStream`，不增加原生库。隧道必须匹配主 TLS 连接
 
 ### Windows 组合键(Windows 本机)
 
-Windows 本机的资源管理器会在应用程序之前处理 Windows 键,以前单按 Win 会让本机和远端的开始菜单一起弹出([velashell-plugins#174](https://github.com/VelaShellLabs/velashell-plugins/issues/174))。「体验」页的 **Windows 组合键**(`windowsKeys`)对应 mstsc 的「应用 Windows 组合键」与 RDCMan 的同名选项:
+Windows 本机的资源管理器会在应用程序之前处理 Windows 键,以前单按 Win 会让本机和远端的开始菜单一起弹出([velashell-plugins#174](https://github.com/VelaShell/velashell-plugins/issues/174))。「体验」页的 **Windows 组合键**(`windowsKeys`)对应 mstsc 的「应用 Windows 组合键」与 RDCMan 的同名选项:
 
 | 值 | 行为 |
 | --- | --- |
@@ -285,7 +285,7 @@ dotnet build plugins/VelaShell.Plugin.Rdp -c Release -t:PackVpx
 
 Windows 虚拟文件剪贴板通过 `WindowsVirtualFileClipboard` 调用系统 OLE/user32/kernel32。另一平台相关处是 `UnixClipboardFile`:它在 Unix 上 P/Invoke 系统 `libc` 的 `open`/`fstat`,以 `O_NONBLOCK|O_NOFOLLOW` 安全打开用于本地→远程传输的剪贴板文件(避免 FIFO 阻塞、拒绝符号链接),Windows 用 .NET 文件 API。系统 libc 随操作系统提供,不是捆绑的原生库。
 
-不再有 `rdp-native` 工作流、CMake、随包 OpenSSL/VC 运行库或六平台原生任务:插件以**一份托管 `.vpx`** 交付,全 RID 通用。包内包含 `ManagedCodecs.H264.dll`、`ManagedCodecs.Core.dll` 和 `VelaShell.Rdp.THIRD-PARTY-NOTICES.txt`,保留 MIT/Apache-2.0 与依赖版权声明。构建与打包仍为托管流程;Ubuntu 认证 CI 额外使用临时系统 MIT Kerberos KDC 做集成测试。工具链细节见 [插件构建 README](https://github.com/VelaShellLabs/velashell-plugins/blob/main/plugins/VelaShell.Plugin.Rdp/README.md)。另见 [打包与签名](../templates/publishing.md)。
+不再有 `rdp-native` 工作流、CMake、随包 OpenSSL/VC 运行库或六平台原生任务:插件以**一份托管 `.vpx`** 交付,全 RID 通用。包内包含 `ManagedCodecs.H264.dll`、`ManagedCodecs.Core.dll` 和 `VelaShell.Rdp.THIRD-PARTY-NOTICES.txt`,保留 MIT/Apache-2.0 与依赖版权声明。构建与打包仍为托管流程;Ubuntu 认证 CI 额外使用临时系统 MIT Kerberos KDC 做集成测试。工具链细节见 [插件构建 README](https://github.com/VelaShell/velashell-plugins/blob/main/plugins/VelaShell.Plugin.Rdp/README.md)。另见 [打包与签名](../templates/publishing.md)。
 
 ## 验证情况与剩余边界
 

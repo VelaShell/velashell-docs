@@ -21,10 +21,10 @@ Since 2026-08-27 the toolchain is split across three repositories, each versione
 
 | Repository / location | Contents |
 | --- | --- |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk/` | Contract: entry interfaces, capability interfaces, DTOs, and manifest models |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Testing/` | Test doubles: `TestPluginContext` and in-memory implementations of each capability |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Build/` | The single NuGet package a plugin project references: MSBuild props/targets plus the bundled packer (`VelaShell.PluginSdk.Packer`, same repository; moved over from velashell-plugin-cli on 2026-09-11) |
-| [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli) `src/VelaShell.Plugin.Cli/` | The `vela-plugin` command line tool (validate/pack/sign/dev mount) |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk/` | Contract: entry interfaces, capability interfaces, DTOs, and manifest models |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Testing/` | Test doubles: `TestPluginContext` and in-memory implementations of each capability |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Build/` | The single NuGet package a plugin project references: MSBuild props/targets plus the bundled packer (`VelaShell.PluginSdk.Packer`, same repository; moved over from velashell-plugin-cli on 2026-09-11) |
+| [velashell-plugin-cli](https://github.com/VelaShell/velashell-plugin-cli) `src/VelaShell.Plugin.Cli/` | The `vela-plugin` command line tool (validate/pack/sign/dev mount) |
 | **this repository** `src/VelaShell.Plugin.Templates/` | `dotnet new` templates (`velaplugin` / `velaplugin-ui` / `velaplugin-protocol` / `velaplugin-workspace`) |
 
 The host-side implementation lives in the **main repository** [joesdu/VelaShell](https://github.com/joesdu/VelaShell):
@@ -37,7 +37,7 @@ The host-side implementation lives in the **main repository** [joesdu/VelaShell]
 ### 2.1 Where the First-Party Plugins Live
 
 The officially maintained plugins (Redis / S3 / Telnet / Serial / MongoDB / Docker panel / RDP / VNC) live in
-[VelaShellLabs/velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins), not in the main repository.
+[VelaShell/velashell-plugins](https://github.com/VelaShell/velashell-plugins), not in the main repository.
 The exception is the AI plugin: it lives under `plugins/` in the main repository joesdu/VelaShell and is built and
 released with the app (it borrows the host's AvaloniaEdit and can only load in-process; see `plugins/README.md` there).
 
@@ -722,7 +722,7 @@ Discipline:
   exactly that; the next release fixes it.)
 - Localization is the plugin's responsibility: retrieve translations through `context.Host.Locale` and hot-update on `LocaleChanged`.
 - The host automatically closes all of a plugin's panels when the plugin is deactivated.
-- The smallest starting point is `dotnet new velaplugin-ui` (a compile-time AXAML panel + a command, see §2.2); a complete example at real scale (compile-time AXAML, bilingual copy, tunnelling over a saved SSH session): [`plugins/VelaShell.Plugin.Mongo`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Mongo).
+- The smallest starting point is `dotnet new velaplugin-ui` (a compile-time AXAML panel + a command, see §2.2); a complete example at real scale (compile-time AXAML, bilingual copy, tunnelling over a saved SSH session): [`plugins/VelaShell.Plugin.Mongo`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Mongo).
 
 #### Posting to the message center (`PostNotificationAsync`, SDK 2.1.3)
 
@@ -888,7 +888,7 @@ context.Protocols.Register(
 > lowercase removes case ambiguity — the id is compared in three places (the registry, the UI, the stored profile), and as soon as uppercase
 > is allowed, `Foo.Bar` and `foo.bar` get judged "the same" in one place and "different" in another.
 
-Complete example: [`plugins/VelaShell.Plugin.S3`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.S3) (protocol + two management panels + 22 bucket settings).
+Complete example: [`plugins/VelaShell.Plugin.S3`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.S3) (protocol + two management panels + 22 bucket settings).
 File protocols have no template (S3 is the only first-party one, too few to distil a common skeleton from); the quickest start for a
 terminal protocol is `dotnet new velaplugin-protocol` (see §2.4).
 
@@ -942,7 +942,7 @@ ValueTask       ResizeAsync(int columns, int rows, CancellationToken ct);
 
 Quickest start: `dotnet new velaplugin-protocol` (see §2.4).
 
-Complete example: [`plugins/VelaShell.Plugin.Telnet`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Telnet) (RFC 854 negotiation + NAWS + 8-bit transparency, no third-party dependencies).
+Complete example: [`plugins/VelaShell.Plugin.Telnet`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Telnet) (RFC 854 negotiation + NAWS + 8-bit transparency, no third-party dependencies).
 
 ### 5.14 Workspaces: Plugin-Provided Non-File Connections (Redis / MySQL / Kafka …)
 
@@ -1033,7 +1033,7 @@ internal sealed class MyWorkspaceProvider(IPluginContext context) : IWorkspacePr
 > characters); the two **share one check and one strip of tabs**, so within one manifest a workspace id must not collide with a protocol id
 > either.
 
-Complete example: [`plugins/VelaShell.Plugin.Redis`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Redis) (keyspace browser + type details + declarative connection form).
+Complete example: [`plugins/VelaShell.Plugin.Redis`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Redis) (keyspace browser + type details + declarative connection form).
 Quickest start: `dotnet new velaplugin-workspace` (see §2.4; it comes with a field for going through an SSH tunnel — delete it by following
 the comments if you do not need it).
 
@@ -1266,7 +1266,7 @@ Discipline for adding capabilities: first record them in this file and the corre
 
 `.vpx` is VelaShell's **own container format**, not a renamed zip: general-purpose archivers
 cannot open it, and the host refuses to install a plain zip. The implementation lives in
-[velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk/Packaging/VpxContainer.cs`; reading (host install) and writing
+[velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk/Packaging/VpxContainer.cs`; reading (host install) and writing
 (`vela-plugin pack`) share that one file, so "the tool produced a package the host will not take"
 cannot happen.
 

@@ -9,7 +9,7 @@
 | [publishing.md](publishing.md) | **Packaging and publishing**: Release builds, `.vpx`, signing and trust, shipping to the [marketplace](http://market.easilynet.top), CI packaging |
 | [release-process.md](release-process.md) | **How `velashell-plugin-templates` is released**: the templates package's Release flow, what each of the two version numbers is for, NuGet Trusted Publishing setup |
 
-Repository: [velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates)
+Repository: [velashell-plugin-templates](https://github.com/VelaShell/velashell-plugin-templates)
 (`dotnet new velaplugin` / `velaplugin-ui` / `velaplugin-protocol` / `velaplugin-workspace` templates).
 
 Writing your first plugin, read in this order: [dev-guide.md](dev-guide.md) →

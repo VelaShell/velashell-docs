@@ -8,7 +8,7 @@
 | [publishing.md](publishing.md) | **打包与发布**:Release 构建、`.vpx`、签名与信任、发布到[插件商店](http://market.easilynet.top)、CI 出包 |
 | [release-process.md](release-process.md) | **`velashell-plugin-templates` 怎么发版**:模板包的 Release 流程、两个版本号的分工、NuGet 可信发布配置 |
 
-对应仓库:[velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates)
+对应仓库:[velashell-plugin-templates](https://github.com/VelaShell/velashell-plugin-templates)
 (`dotnet new velaplugin` / `velaplugin-ui` / `velaplugin-protocol` / `velaplugin-workspace` 模板)。
 
 第一次写插件的话,按 [dev-guide.md](dev-guide.md) → [CLI 手册](../cli/cli.md) →

@@ -1,6 +1,6 @@
 # MongoDB 工作台:插件化设计
 
-> 编写日期：2026-10-02　代码：`VelaShellLabs/velashell-plugins` 的 `plugins/VelaShell.Plugin.Mongo`
+> 编写日期：2026-10-02　代码：`VelaShell/velashell-plugins` 的 `plugins/VelaShell.Plugin.Mongo`
 >
 > 前置阅读：[`../templates/dev-guide.md`](../templates/dev-guide.md)(能力面与纪律)、
 > 插件仓库里 Docker 面板的 `README.md`(同样从命令面板打开、自己管连接对象的先例)、

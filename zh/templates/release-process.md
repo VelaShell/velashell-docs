@@ -109,7 +109,7 @@ pwsh scripts/Set-Version.ps1 1.5.1        # 再发一版模板把它带出去
 | --- | --- |
 | Policy name | `velashell-plugin-templates`(随意,能认出来就行) |
 | Policy owner | `joes_du` |
-| Repository Owner | `VelaShellLabs` |
+| Repository Owner | `VelaShell` |
 | **Repository** | `velashell-plugin-templates` |
 | **Workflow File** | `release.yml` —— **只填文件名**,不要写 `.github/workflows/` 前缀 |
 | Environment | 留空(工作流没用 GitHub Environments) |

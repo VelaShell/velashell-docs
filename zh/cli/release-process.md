@@ -64,7 +64,7 @@ Actions 页面 → 选 Release 工作流 → Run workflow → 填标签。推送
 | --- | --- |
 | Policy name | `velashell-plugin-cli`(随意,能认出来就行) |
 | Policy owner | `joes_du` |
-| Repository Owner | `VelaShellLabs` |
+| Repository Owner | `VelaShell` |
 | **Repository** | `velashell-plugin-cli` |
 | **Workflow File** | `release.yml` —— **只填文件名**,不要写 `.github/workflows/` 前缀 |
 | Environment | 留空(工作流没用 GitHub Environments) |

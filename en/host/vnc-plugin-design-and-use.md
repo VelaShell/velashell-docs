@@ -2,7 +2,7 @@
 
 中文：[VNC 远程桌面插件设计与使用](../../zh/host/VNC远程桌面插件设计与使用.md).
 
-`velashell.vnc` lives in [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Vnc). It is an in-process workspace plugin that shows a VNC (RFB) remote desktop in an Avalonia tab on Windows, Linux and macOS: Linux desktops (TigerVNC, x11vnc and others), macOS Screen Sharing, VNC services on Windows, and virtual-machine consoles such as QEMU/libvirt. The engine is a **pure-managed C# RFB client**: no native VNC library, no bundled native binaries, no external viewer window, one package for every RID.
+`velashell.vnc` lives in [velashell-plugins](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Vnc). It is an in-process workspace plugin that shows a VNC (RFB) remote desktop in an Avalonia tab on Windows, Linux and macOS: Linux desktops (TigerVNC, x11vnc and others), macOS Screen Sharing, VNC services on Windows, and virtual-machine consoles such as QEMU/libvirt. The engine is a **pure-managed C# RFB client**: no native VNC library, no bundled native binaries, no external viewer window, one package for every RID.
 
 It is split the same way as the [RDP plugin](rdp-plugin-design-and-use.md): Plugin → Provider → Document → View → DesktopControl.
 
