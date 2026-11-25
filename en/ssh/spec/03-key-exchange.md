@@ -111,7 +111,7 @@ not sending one would make it impossible for peers that support only non-AEAD to
 
 - none of the eight lists may be empty —— an empty list cannot be negotiated with any peer;
 - every name in the key exchange list is either a method this library implements (the fixed table in `SshKeyExchangeFactory`; nothing can be registered at runtime) or one of the indicators of §2.3;
-- every name in the encryption, MAC and compression lists must be one this library implements (for compression that is only `none` and `zlib@openssh.com`).
+- every name in the encryption, MAC and compression lists must be one this library implements. For initial KEXINIT and rekey alike, each direction offers `zlib@openssh.com`, then `none`, if the connection policy enables it, or just `none` otherwise (00 §6.5).
 
 Otherwise `ArgumentException` is thrown on the spot and **no dialing happens at all**.
 Rationale: a name we do not implement that slips into the list only gets negotiated when the peer happens to have nothing else left ——
@@ -800,10 +800,7 @@ the local side stops resetting while the peer keeps resetting, the first packet 
 chacha20-poly1305 (the nonce is the sequence number) and HMAC suites (the MAC covers the sequence number) expose it immediately;
 AES-GCM's nonce ignores the sequence number and masks the error.
 
-〔Decision〕**When the peer does not support strict KEX, log a warning-level entry and continue.**
-The connection is not refused —— there are many old servers, and refusing would kill a large number of legitimate scenarios;
-but the consumer must be able to see "this connection has no Terrapin mitigation" in the diagnostics panel.
-`SshConnectionInfo.StrictKeyExchange` exposes this fact.
+〔Decision〕When the initial exchange does not negotiate strict KEX, both directions must select AES-GCM. Any other suite ends the exchange with `NegotiationFailed`. Every rekey applies the same check using the strict KEX state established by the initial exchange. Older devices can be configured to use AES-GCM in both directions. Diagnostics report the actual strict KEX state.
 
 ---
 
@@ -854,7 +851,7 @@ Either side may initiate rekeying at any time by sending `SSH_MSG_KEXINIT`.
 
 〔Decision〕**A rekey initiated by the peer during authentication is completed in place.** If the user takes a few minutes to find a one-time code, a time-based `RekeyLimit` on the server sends `KEXINIT` in the middle of authentication.
 At that point the authenticator is the only reader and the only writer, so the exchange runs directly on the connection-setup transport (pinning the host key of the first exchange, §8.4), and then reading continues for the reply to the request in flight —
-it arrives after the exchange, under the new keys; the delayed compression attached after authentication succeeds follows the latest negotiation result.
+it arrives after the exchange under the new keys. A rekey before `SSH_MSG_USERAUTH_SUCCESS` keeps delayed compression inactive. A rekey after authentication installs fresh compression contexts for the directions that negotiated them.
 `KEXINIT` used to be treated as an unexpected message, and the connection failed with a protocol error.
 
 〔Decision〕Thresholds at which we trigger rekeying ourselves:

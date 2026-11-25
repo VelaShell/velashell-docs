@@ -445,30 +445,11 @@ else
 
 ## 七 压缩
 
-**默认不开。**要开就显式写：
+终端 SSH 配置默认使用 `Off`。若只需压缩发往最终目标的数据，选 `UploadOnly`，或调用 `SshAlgorithmSet.Default.WithCompression()`。客户端仅使用哈夫曼编码。只有管理员确认服务端编码器同样能防范字典匹配造成的长度泄露后，才能显式选择 `Bidirectional`（`WithCompression(allowServerCompression: true)`）。
 
-```csharp
-var options = new SshConnectionOptions("root@example.com")
-{
-    Algorithms = SshAlgorithmSet.Default.WithCompression(),   // zlib@openssh.com
-};
-```
+每个启用压缩的方向依次提议 `zlib@openssh.com` 和 `none`。认证成功前都不压缩，包括认证期间换钥时。认证后的换钥沿用原策略。压缩可能节省带宽，但不会缩短网络往返时间。
 
-两件事值得先知道：
-
-1. **交互式会话开它基本是净亏。** 终端输出本来就小，压缩省下的字节
-   抵不上两端的 CPU。**压不动的内容（已压缩的文件、加密数据）压完还会变大。**
-   值得开的场景是 SFTP 传文本、或者链路按流量计费。
-2. **`zlib@openssh.com` 等认证过了才开始压缩**，这是它与老的 `zlib` 唯一的区别。
-   原因是压缩后的长度会泄露明文的可压缩性 —— 在认证阶段，这等于给口令
-   开了一条区分信道（CRIME 那一类）。所以我们只提供前者。
-
-**压缩是否真的谈成了，要自己查** —— 服务端不支持时会静默落到 `none`，
-**不会报错**：
-
-```csharp
-Console.WriteLine(conn.Algorithms.CompressionServerToClient);   // zlib@openssh.com 或 none
-```
+中间跳板和独立 SFTP 配置使用 `none`。在终端连接上打开的 SOCKS、其他转发通道和 SFTP 通道共用连接协商结果。SSH 连接信息可查看收发两个方向的实际算法。
 
 `Algorithms` 交出的是这条会话实际协商出来的全部算法（密钥交换、主机密钥、
 两个方向的加密与完整性、两个方向的压缩、是否启用了严格 KEX）。
@@ -705,7 +686,7 @@ await using SshConnection conn = await SshConnection.ConnectAsync(options, ct);
 await using SshShell shell = await conn.OpenShellAsync(SshConfigFile.Resolve(blocks, "prod-web-1").ApplyToShell(), ct);
 ```
 
-`HostName` / `Port` / `User` / `IdentityFile` / `Compression` / `ServerAlive*` / `ConnectTimeout` /
+`HostName` / `Port` / `User` / `IdentityFile` / `ServerAlive*` / `ConnectTimeout` /
 `StrictHostKeyChecking` / `UserKnownHostsFile` / `ProxyJump` / `ProxyCommand` 都会落到连接参数上；
 `ProxyJump` 上的每个跳板**按同一份配置解析**，跳板链有深度上限并检测环。
 逐项规则见 [`spec/09-dialing.md`](spec/09-dialing.md) §7。

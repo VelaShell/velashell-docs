@@ -1253,7 +1253,7 @@ Since 2026-09-30 the dialog is a “protocol rail on the left + paged form on th
   |---|---|---|
   | General | always | destination, authentication, the plugin protocol's everyday fields, organize |
   | Terminal | SSH only | run command after authentication + delay, session-level terminal overrides |
-  | SSH options | SSH and SFTP (same SSH connection) | compression, obscure keystroke timing (SSH only), allow legacy algorithms, custom algorithm lists, agent endpoint |
+  | SSH options | SSH and SFTP (same SSH connection) | obscure keystroke timing (SSH only), allow legacy algorithms, custom algorithm lists, agent endpoint |
   | Forwarding | SSH only (interactive shell) | ssh-agent forwarding (and its two restrictions), X11 forwarding |
   | Advanced | FTP, or a plugin protocol that declares `IsAdvanced` fields | FTP default remote path and server time zone; plugin tuning fields |
 
@@ -1380,26 +1380,20 @@ Since 2026-09-30 the dialog is a “protocol rail on the left + paged form on th
       reconnect path shows up as “it starts kicking me again after a dropped connection”, and nobody connects that to
       reconnecting. Changing the profile takes effect on the **next connection**, the same as the keep-alive field next
       to it; a local terminal has no session profile, so not a single byte is ever sent there.
-  - **The SSH options and Forwarding pages** (`SessionProfile.Ssh` → `SshSessionOptions`): compression, ssh-agent
+  - **The SSH options and Forwarding pages** (`SessionProfile.Ssh` → `SshSessionOptions`): ssh-agent
     forwarding and X11 forwarding, **all off by default** (same as OpenSSH); obscure keystroke timing (since 2026-10-24, off
     by default, see below); plus the two algorithm negotiation options
     (allow legacy algorithms, custom algorithm lists — since 2026-09-29, see below). Each has one line of muted text
-    saying *when* to turn it on — getting compression wrong only costs CPU, getting a forwarding wrong lends part of
+    saying *when* to turn it on — getting a forwarding wrong lends part of
     this machine to the remote side. “Allow legacy algorithms” and “ssh-agent forwarding” each carry a warning-colored
     outline tag next to their title (“Insecure” / “Trusted hosts only”). With everything at its default the whole
     object is stored as `null`, so old profiles need no migration.
-    - **Visibility**: compression and the two algorithm options are on the SSH options page and show for both SSH and
+    - **Visibility**: the two algorithm options are on the SSH options page and show for both SSH and
       SFTP (they ride the same SSH connection); the two forwardings are on the Forwarding page, hang off the interactive
       shell, so they **show for SSH only** and are saved as false on SFTP profiles — the same reasoning as
       “Post-authentication command”.
-    - **Compression (high-latency / low-bandwidth links)**: recommended when latency is high (cross-border or
-      intercontinental links, round trips above ~100 ms) or bandwidth is scarce — terminal output and text files
-      shrink a lot. Not recommended on a LAN or when mostly moving already-compressed data (images, archives): it only
-      costs CPU. Negotiates `zlib@openssh.com` (compression starts after authentication) and **never offers** legacy
-      `zlib` (compresses before authentication — the door for CRIME-style attacks); `none` always stays in the list
-      after it, so a server with `Compression no` simply falls back to no compression instead of failing. Each hop of
-      a jump chain negotiates with its own profile.
-    - **Obscure keystroke timing** (since 2026-10-24, `SshSessionOptions.ObscureKeystrokeTiming`, below compression, **off by
+    - **SSH options → Transport → Terminal compression** applies to the end target of a terminal SSH profile. **Off** is the default. **Input only (client to server)** requests delayed compression with a Huffman-only client encoder. **Input and output (both directions)** requires a separate checkbox labelled “I manage this server and have verified that its SSH encoder uses Huffman-only DEFLATE or equivalent protection against dictionary matches.” The warning explains that VelaShell cannot verify how the server compresses output and that even with Huffman-only encoding, packet sizes remain visible. Changing the target host, port, or selected jump host clears that confirmation. The same private address can reach a different server through another jump host. Independent SFTP profiles omit the control and use `none`, as do intermediate jump hosts. Connection information displays the negotiated result in each direction.
+    - **Obscure keystroke timing** (since 2026-10-24, `SshSessionOptions.ObscureKeystrokeTiming`, **off by
       default** — unlike OpenSSH, where it is on, because of the bandwidth cost): normally every keystroke is a packet of its
       own, so the gaps between keys are visible on the wire and reveal what was typed (passwords included). When on, input
       is sent on a fixed 20 ms beat, and while typing, empty beats carry cover packets of the same size

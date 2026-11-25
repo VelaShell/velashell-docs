@@ -2,6 +2,7 @@
 
 > Status: **Decided; M0–M5 complete + user-facing connection layer** (2026-09-21). This document sets the direction, architecture and principles.
 > The basis for implementation is not this document but the behaviour specifications under [`spec/`](../spec/) — see discipline #2 in §2.2.
+> The compression examples, benchmarks and `ssh_config` mappings below describe legacy designs. The terminal profile modes and public `WithCompression` API are specified in [the SSH overview, §6.5](../spec/00-overview.md).
 > 中文：[`../../../zh/ssh/design/architecture.md`](../../../zh/ssh/design/architecture.md)
 >
 > Basis: a file-by-file read-through of `Tmds.Ssh` (MIT, 2026-09 snapshot, 28,769 lines) and VelaShell's current SSH stack

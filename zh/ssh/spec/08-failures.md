@@ -517,8 +517,7 @@ readonly ref struct PacketTapRecord
 | `Warning` | 降级（SHA-1 签名、无严格 KEX）、重试、单条转发连接失败 |
 | `Error` | 连接级失败 |
 
-〔决策〕**「对端不支持严格 KEX」必须记 Warning。** 它不阻断连接（§03 6），
-但使用者应当能看见 —— 这是一条实打实的安全属性缺失。
+〔决策〕两个方向都使用 AES-GCM 时，未协商严格 KEX 的连接可以继续，并应向使用者显示警告。选中其他加密算法时，交换以 `NegotiationFailed` 失败（§03 6）。
 
 〔决策〕**热路径的日志用 `LoggerMessage` 源生成器。**
 每报文一条 Trace 日志，若走字符串插值会在满速传输时成为主要开销。

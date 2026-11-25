@@ -42,7 +42,7 @@ permanently locking the limit at 35000 would directly shut off the throughput op
 it is the largest single block of memory the peer can make us allocate, a clear denial-of-service surface.
 256 KiB is the compromise between "large enough not to limit throughput" and "small enough not to be worth using to exhaust memory".
 
-〔Decision〕The relaxation happens **at the moment authentication succeeds**, performed by the connection factory (the same switch point as delayed compression).
+〔Decision〕The relaxation happens **at the moment authentication succeeds**, performed by the connection factory.
 The `maximum packet size` announced when opening a channel (the channel option `ReceiveMaxPacketBytes`, default 32 KiB) MUST fit within this limit (minus the packet header and maximum padding),
 otherwise opening the channel is refused on the spot —— rather than waiting for the peer to send an "oversized packet" per our announcement and then judging it a protocol error.
 〔History〕A comment in an early implementation said "relax after authentication", but no code actually performed the relaxation:
@@ -306,23 +306,8 @@ Disconnecting would make it impossible to coexist with servers that implement ne
 
 ## 6 Where compression sits
 
-Compression happens at the **payload layer**, i.e. on the content of `payload` in the diagram above:
+Framing uses the SSH message directly as its payload until authentication succeeds. Thereafter, each direction uses its negotiated algorithm (00 §6.5). With `zlib@openssh.com`, the client compresses outgoing payloads using Huffman-only DEFLATE before encryption. Incoming payloads are decompressed after verification and decryption. Rekey resets the stream for each compressed direction when its new keys take effect and preserves delayed activation if authentication is still pending.
 
-```
-Send:    message → compress → payload → pad → encrypt/MAC
-Receive: decrypt/verify → strip padding → payload → decompress → message
-```
-
-- `zlib@openssh.com`: compression starts only **after authentication succeeds**. This is the only compression algorithm implemented.
-  This avoids exposing compression state to arbitrary connecting parties during the unauthenticated phase.
-  〔Note〕The switch point is **the next packet after** `SSH_MSG_USERAUTH_SUCCESS` is received/sent.
-  **No** compressor is installed at the NEWKEYS of the first key exchange.
-- `zlib` (RFC 4253 §6.2): **not implemented** (rationale in 00 §6.5). It compresses from the first NEWKEYS;
-  if it were negotiated but treated as no compression, the two ends would desynchronize on the first authentication packet, surfacing only as an unexplained decompression error.
-  So if our compression list contains any name other than `none` / `zlib@openssh.com`, the pre-connect list check rejects it (03 §2.2);
-  when key exchange is run directly, bypassing the connection factory, a negotiated result other than these two still fails on the spot with a key-exchange error.
-- **After every key re-exchange, the compression context MUST be reset**.
-  The symptom of not resetting it is that the peer fails to decompress after rekeying —— by which time it is no longer recognizable as a compression problem.
 - **The compressed stream never ends** (RFC 4253 §6.2: the context is passed from one packet to the next, with only a partial flush at the end of each packet).
   Every packet we send ends with a sync flush (the peer's inflate decodes it; like a partial flush it does not end the stream); we never write an end-of-stream marker.
   〔Decision〕**A zlib end-of-stream marker (the final block) in the peer's payload disconnects on that packet**, reported as `ProtocolError` (decompression failure);
@@ -337,7 +322,7 @@ Receive: decrypt/verify → strip padding → payload → decompress → message
 The compressed `payload` length is still subject to the limit of §1.1;
 **the decompressed length MUST also be capped**, otherwise a small packet could decompress into arbitrarily large memory —— i.e. a zip bomb.
 
-〔Decision〕**The decompression cap is the `packet_length` limit in force at the time** (§1.1). `zlib@openssh.com` is only enabled after authentication, so in practice it is 256 KiB.
+〔Decision〕**The decompression cap is the `packet_length` limit in force at the time** (§1.1). For a transport using the post-authentication limit this is 256 KiB.
 The cap is checked **before** the decompressed data is written out; exceeding it disconnects with `ProtocolError`.
 Rationale: a normal peer splits data according to the channel packet limit we announce (32 KiB by default; raising it must still fit within the §1.1 limit) and every other message is small, so decompressed payloads fit anyway;
 allowing some multiple of the packet limit buys no interoperability and only enlarges the memory a compression bomb can occupy.

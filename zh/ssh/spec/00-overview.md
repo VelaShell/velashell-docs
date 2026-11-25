@@ -194,20 +194,19 @@ SSH 的 wire 格式只有七种类型。全部**大端序**。
 
 ### 6.5 压缩
 
-| 算法 | 默认 |
-| --- | :-: |
-| `none` | ✅ |
-| `zlib@openssh.com`（认证后才开始压缩） | 可选，默认关 |
-| `zlib`（RFC 4253，握手期即压缩） | ❌ 不实现 |
+终端 SSH 最终目标的连接配置决定 KEXINIT 中的压缩清单。两个方向独立协商，若双方都提供 `none`，该方向可回退到 `none`。任一方向没有共同算法时，协商失败。
 
-〔决策〕**只实现 `zlib@openssh.com`，不实现裸 `zlib`。** 裸 `zlib` 从首次 NEWKEYS 起就压，
-认证报文（口令、公钥签名）也在压缩流里 —— 密文长度会泄漏明文的可压缩性，未认证的连接方就能做
-CRIME 类的压缩旁路。OpenSSH 服务端早已只在认证后压缩，不提供裸 `zlib` 不影响实际互通。
-使用者即使手动把 `zlib` 加进清单，连接前的清单校验就会拒绝它（§6.6），而不是悄悄按不压缩处理（见 01 §六）。
+| 配置模式 | 客户端 → 服务端 | 服务端 → 客户端 |
+| --- | --- | --- |
+| `Off`（默认） | `none` | `none` |
+| `UploadOnly` | `zlib@openssh.com`、`none` | `none` |
+| `Bidirectional` | `zlib@openssh.com`、`none` | `zlib@openssh.com`、`none` |
 
-〔决策〕**默认不开压缩**，与 OpenSSH 一致。
-理由：现代链路上压缩通常不划算（CPU 换带宽），且压缩 + 加密的组合有
-CRIME 类侧信道的历史教训。需要的人（弱网、高延迟）用 `WithCompression()` 显式打开。
+在 `SSH_MSG_USERAUTH_SUCCESS` 之前，两个方向都传输未压缩的载荷。重协商沿用原策略和认证状态，在新密钥生效时为谈成延迟压缩的方向建立新的压缩流。裸 `zlib` 不参与协商。
+
+客户端的 DEFLATE 编码器仅使用哈夫曼编码，避免通过字典匹配引用其他流量中的秘密字节。密文长度仍然可见。算法名无法表明服务端的编码策略，只有管理员确认该服务端采用同等缓解措施后，才能显式选择 `Bidirectional`。导入的 `Compression yes` 和旧配置中的压缩布尔值均不能代替这项确认。
+
+原有的无参重载 `SshAlgorithmSet.WithCompression()` 请求 `UploadOnly`。新重载 `SshAlgorithmSet.WithCompression(bool allowServerCompression)` 在显式传入 `false` 时请求相同模式。管理员确认服务端编码器后，可传入 `true` 请求 `Bidirectional`。独立 SFTP 配置和中间跳板均使用 `Off`。标准 SSH 按传输连接的方向协商压缩，终端连接上的所有通道，包括转发的 SOCKS 流量和 SFTP，都共用协商结果。
 
 ### 6.6 老算法开关与清单校验
 
@@ -222,7 +221,7 @@ CRIME 类侧信道的历史教训。需要的人（弱网、高延迟）用 `Wit
 
 〔决策〕**算法目录公开**（`SshAlgorithmCatalog`）：每一类（`SshAlgorithmCategory`）实现了哪些名字（`Implemented`，
 按偏好顺序：默认清单在前、老算法在后）、常见却没实现的有哪些（`KnownUnimplemented`，如 CBC、`umac-*`、`ssh-dss`）。
-使用者让用户自己写清单时据此当场说清「没实现」还是「不认识」。它与上面的校验、各个工厂表同一个口径，用例逐个核对。
+使用者让用户自己写清单时据此当场说清「没实现」还是「不认识」。各方向可提议的压缩模式见 §6.5。
 〔历史〕曾经没有这份目录，宿主用 `Default.WithLegacyInterop()` 推算实现了哪些，再手工维护一份「认得但没实现」的名单。
 
 〔决策〕**只含 FIPS 认可算法的清单**：`SshAlgorithmSet.FipsApprovedOnly`。与 RHEL 10.2 的 FIPS 加密策略（crypto-policies 给 OpenSSH 的清单）比，
