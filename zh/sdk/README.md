@@ -7,7 +7,7 @@ English: [`../../en/sdk/`](../../en/sdk/)
 | [sdk-reference.md](sdk-reference.md) | **SDK 参考**:包结构、入口契约、能力域一览、SDK 版本历史、测试替身、装载模型 |
 | [release-process.md](release-process.md) | **`velashell-plugin-sdk` 怎么发版**:Release 流程、NuGet 可信发布配置、apiLevel 与 Avalonia 版本纪律 |
 
-对应仓库:[velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk)
+对应仓库:[velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk)
 (`VelaShell.PluginSdk`、`VelaShell.PluginSdk.Testing`)。
 
 ## 相关

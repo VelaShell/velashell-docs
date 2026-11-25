@@ -1,6 +1,6 @@
 # MongoDB Workbench: Plugin Design
 
-> Written: 2026-10-02 · Code: `plugins/VelaShell.Plugin.Mongo` in `VelaShellLabs/velashell-plugins`
+> Written: 2026-10-02 · Code: `plugins/VelaShell.Plugin.Mongo` in `VelaShell/velashell-plugins`
 >
 > Background reading: [`../templates/dev-guide.md`](../templates/dev-guide.md) (capabilities and rules),
 > the Docker panel's `README.md` in the plugins repository (the precedent for opening from the command palette and managing its own connection targets),

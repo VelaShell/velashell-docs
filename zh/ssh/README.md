@@ -13,7 +13,7 @@ SFTP、端口转发与隧道,全异步、低分配、AOT 友好。它是**独立
 
 ## 代码在哪
 
-2026-09-23 起本库并入宿主仓库,不再单独发 NuGet(原仓库 `VelaShellLabs/velashell-ssh`)。
+2026-09-23 起本库并入宿主仓库,不再单独发 NuGet(原仓库 `VelaShell/velashell-ssh`)。
 本区文档里出现的 `src/…`、`tests/…`、`scripts/ssh/…` 都是**宿主仓库**里的路径:
 
 | 路径 | 内容 |

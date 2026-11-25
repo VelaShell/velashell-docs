@@ -2,13 +2,13 @@
 
 > 📦 **代码仓库对照**(2026-08-30 更新):本目录是插件系统的**宿主侧设计蓝图**,
 > 代码分散在几个仓库里 —— 插件契约 SDK 在
-> [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk);
+> [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk);
 > `vela-plugin` CLI 与 `VelaShell.PluginSdk.Build` 在
-> [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli);
+> [velashell-plugin-cli](https://github.com/VelaShell/velashell-plugin-cli);
 > `dotnet new` 模板在
-> [velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates);
+> [velashell-plugin-templates](https://github.com/VelaShell/velashell-plugin-templates);
 > 第一方插件(Redis / S3 / Telnet / Serial)在
-> [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins);
+> [velashell-plugins](https://github.com/VelaShell/velashell-plugins);
 > 宿主实现在 [joesdu/VelaShell](https://github.com/joesdu/VelaShell)。
 > 本页(以及 01–15 蓝图)里出现的 `plugin-sdk/…`、`tools/…`、`templates/…` 指前三者,
 > `plugins/VelaShell.Plugin.…`、`tests/VelaShell.Plugin.*.Tests` 指第四个。

@@ -2,7 +2,7 @@
 
 中文: [RDP远程桌面插件设计与使用](../../zh/host/RDP远程桌面插件设计与使用.md).
 
-`velashell.rdp` is an in-process workspace plugin in [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Rdp). It renders a remote desktop inside an Avalonia tab on Windows, Linux and macOS. The engine is a **pure-managed C# RDP client** — no native RDP library, no bundled native binaries — shipping managed transport code and its managed DTLS dependency for every RID.
+`velashell.rdp` is an in-process workspace plugin in [velashell-plugins](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Rdp). It renders a remote desktop inside an Avalonia tab on Windows, Linux and macOS. The engine is a **pure-managed C# RDP client** — no native RDP library, no bundled native binaries — shipping managed transport code and its managed DTLS dependency for every RID.
 
 ## Architecture and scope
 
@@ -138,7 +138,7 @@ Startup and underrun recovery use 20–80 ms of adaptive prebuffering, estimatin
 
 ### Windows key combinations (Windows hosts)
 
-The local Windows shell acts on the Windows key before the application does, so a lone Win used to open the Start menu on both computers ([velashell-plugins#174](https://github.com/VelaShellLabs/velashell-plugins/issues/174)). **Windows key combinations** (`windowsKeys`) on the Experience page matches mstsc's "Apply Windows key combinations" and the RDCMan option of the same name:
+The local Windows shell acts on the Windows key before the application does, so a lone Win used to open the Start menu on both computers ([velashell-plugins#174](https://github.com/VelaShell/velashell-plugins/issues/174)). **Windows key combinations** (`windowsKeys`) on the Experience page matches mstsc's "Apply Windows key combinations" and the RDCMan option of the same name:
 
 | Value | Behaviour |
 | --- | --- |
@@ -285,7 +285,7 @@ dotnet build plugins/VelaShell.Plugin.Rdp -c Release -t:PackVpx
 
 For clipboard transfer, `UnixClipboardFile` P/Invokes the OS `libc` (`open`/`fstat`) to open a clipboard file for local→remote transfer with `O_NONBLOCK|O_NOFOLLOW` (so a FIFO cannot block the open and a symlink is refused); Windows uses the .NET file API. The system libc ships with the OS and is not a bundled native library.
 
-There is no longer an `rdp-native` workflow, CMake, bundled OpenSSL/VC runtimes or six platform native jobs: the plugin ships as **one managed `.vpx`** for every RID. The package includes `ManagedCodecs.H264.dll`, `ManagedCodecs.Core.dll` and `VelaShell.Rdp.THIRD-PARTY-NOTICES.txt`, preserving MIT/Apache-2.0 and dependency notices. Builds and packaging remain managed; Ubuntu authentication CI additionally uses a temporary system MIT Kerberos KDC for integration tests. See the [plugin build README](https://github.com/VelaShellLabs/velashell-plugins/blob/main/plugins/VelaShell.Plugin.Rdp/README.md) and [packaging and signing](../templates/publishing.md).
+There is no longer an `rdp-native` workflow, CMake, bundled OpenSSL/VC runtimes or six platform native jobs: the plugin ships as **one managed `.vpx`** for every RID. The package includes `ManagedCodecs.H264.dll`, `ManagedCodecs.Core.dll` and `VelaShell.Rdp.THIRD-PARTY-NOTICES.txt`, preserving MIT/Apache-2.0 and dependency notices. Builds and packaging remain managed; Ubuntu authentication CI additionally uses a temporary system MIT Kerberos KDC for integration tests. See the [plugin build README](https://github.com/VelaShell/velashell-plugins/blob/main/plugins/VelaShell.Plugin.Rdp/README.md) and [packaging and signing](../templates/publishing.md).
 
 ## Verification and remaining boundaries
 

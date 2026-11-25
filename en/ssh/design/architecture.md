@@ -762,7 +762,7 @@ Locally, `scripts/ssh/interop/Start-TestServer.ps1 -X11` brings up the same envi
 
 ### 11.1 Repository shape
 
-A new repository `VelaShellLabs/velashell-ssh`, alongside the VelaShell main repository.
+A new repository `VelaShell/velashell-ssh`, alongside the VelaShell main repository.
 NuGet package name **VelaShell.Ssh (single package)**; the solution has two projects in total (library + tests),
 with internal layering done by folders, see §4.
 TFM: **`net11.0` single target** (no multi-targeting — this saves polyfills, conditional package references and `#if` branches,

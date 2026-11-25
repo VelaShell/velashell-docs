@@ -7,7 +7,7 @@ English: [`../../en/cli/`](../../en/cli/)
 | [cli.md](cli.md) | **`vela-plugin` 手册**:从插件商店装/升/卸(`install` / `update` / `list`)、开发内环(`dev init`)、体检(`doctor`)、校验/打包/签名、宿主启动参数 |
 | [release-process.md](release-process.md) | **`velashell-plugin-cli` 怎么发版**:Release 流程、NuGet 可信发布配置、两个跨仓库旋钮 |
 
-对应仓库:[velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli)
+对应仓库:[velashell-plugin-cli](https://github.com/VelaShell/velashell-plugin-cli)
 (`VelaShell.Plugin.Cli`、`VelaShell.PluginSdk.Build`)。
 
 ## 相关

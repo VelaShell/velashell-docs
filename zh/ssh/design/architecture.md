@@ -762,7 +762,7 @@ Tmds 的测试基本都要起 Docker 里的 sshd。我们让 `ISshTransportDiale
 
 ### 11.1 仓库形态
 
-新仓库 `VelaShellLabs/velashell-ssh`，与 VelaShell 主仓平级。
+新仓库 `VelaShell/velashell-ssh`，与 VelaShell 主仓平级。
 NuGet 包名 **VelaShell.Ssh（单包）**;解决方案共两个项目(库 + 测试),
 内部分层用文件夹,见 §4。
 TFM：**`net11.0` 单目标**（不做多目标 —— 省掉 polyfill、条件包引用与 `#if` 分支，

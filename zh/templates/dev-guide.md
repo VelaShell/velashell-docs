@@ -30,10 +30,10 @@
 
 | 仓库 / 位置 | 内容 |
 | --- | --- |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk/` | 契约:入口接口、能力接口、DTO、manifest 模型 |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Testing/` | 测试替身:`TestPluginContext` 与各能力内存实现 |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Build/` | 插件工程引用的那一个 NuGet 包:MSBuild props/targets + 随包分发的打包器(`VelaShell.PluginSdk.Packer`,同仓;2026-09-11 起从 velashell-plugin-cli 搬来) |
-| [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli) `src/VelaShell.Plugin.Cli/` | `vela-plugin` 命令行工具(校验/打包/签名/开发挂载) |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk/` | 契约:入口接口、能力接口、DTO、manifest 模型 |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Testing/` | 测试替身:`TestPluginContext` 与各能力内存实现 |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) `src/VelaShell.PluginSdk.Build/` | 插件工程引用的那一个 NuGet 包:MSBuild props/targets + 随包分发的打包器(`VelaShell.PluginSdk.Packer`,同仓;2026-09-11 起从 velashell-plugin-cli 搬来) |
+| [velashell-plugin-cli](https://github.com/VelaShell/velashell-plugin-cli) `src/VelaShell.Plugin.Cli/` | `vela-plugin` 命令行工具(校验/打包/签名/开发挂载) |
 | **本仓库** `src/VelaShell.Plugin.Templates/` | `dotnet new` 模板(`velaplugin` / `velaplugin-ui` / `velaplugin-protocol` / `velaplugin-workspace`) |
 
 宿主侧的实现在**主仓库** [joesdu/VelaShell](https://github.com/joesdu/VelaShell):
@@ -46,7 +46,7 @@
 ### 2.1 第一方插件在哪儿
 
 官方维护的插件(Redis / S3 / Telnet / 串口 / MongoDB / Docker 面板 / RDP / VNC)在
-[VelaShellLabs/velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins),不在主仓库。
+[VelaShell/velashell-plugins](https://github.com/VelaShell/velashell-plugins),不在主仓库。
 例外是 AI 插件:它住在主仓库 joesdu/VelaShell 的 `plugins/` 下,随主程序同仓构建、同版发布
 (借宿主的 AvaloniaEdit、只能进程内装载,理由见那边的 `plugins/README.md`)。
 
@@ -745,7 +745,7 @@ new()
 - 国际化自理:按 `context.Host.Locale` 取词,订阅 `LocaleChanged` 热更新。
 - 插件停用时其全部面板由宿主自动关闭。
 - 最小的起点是 `dotnet new velaplugin-ui`(编译期 AXAML 面板 + 命令,见 §2.2);真实规模的完整示例(编译期 AXAML、
-  双语文案、经已保存的 SSH 会话开隧道):[`plugins/VelaShell.Plugin.Mongo`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Mongo)。
+  双语文案、经已保存的 SSH 会话开隧道):[`plugins/VelaShell.Plugin.Mongo`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Mongo)。
 
 #### 往消息中心发通知(`PostNotificationAsync`,SDK 2.1.3)
 
@@ -904,7 +904,7 @@ context.Protocols.Register(
 > 强制小写是为了消灭大小写歧义 —— 这个 id 在注册表、界面、落盘配置三处被比较,
 > 只要允许大写,`Foo.Bar` 与 `foo.bar` 就会在不同环节被判成"是"和"不是"同一个。
 
-完整示例:[`plugins/VelaShell.Plugin.S3`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.S3)(协议 + 两个管理面板 + 22 项桶配置)。
+完整示例:[`plugins/VelaShell.Plugin.S3`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.S3)(协议 + 两个管理面板 + 22 项桶配置)。
 文件协议没有模板(第一方插件里只有 S3 一个,沉淀不出公共骨架);终端协议的最快起点是 `dotnet new velaplugin-protocol`(见 §2.4)。
 
 #### 5.13.1 终端协议(`IProtocolTerminal`)
@@ -953,7 +953,7 @@ ValueTask       ResizeAsync(int columns, int rows, CancellationToken ct);
 
 最快的起点:`dotnet new velaplugin-protocol`(见 §2.4)。
 
-完整示例:[`plugins/VelaShell.Plugin.Telnet`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Telnet)(RFC 854 协商 + NAWS + 8 位透明,零第三方依赖)。
+完整示例:[`plugins/VelaShell.Plugin.Telnet`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Telnet)(RFC 854 协商 + NAWS + 8 位透明,零第三方依赖)。
 
 ### 5.14 Workspaces —— 自带非文件型连接(Redis / MySQL / Kafka …)
 
@@ -1040,7 +1040,7 @@ internal sealed class MyWorkspaceProvider(IPluginContext context) : IWorkspacePr
 > **id 发布后不可更改**,规则与协议 id 完全相同(全小写、以插件 id 为前缀、≤128 字符),
 > 两者**共用同一个判定与同一个页签条带**,因此同一份清单里工作台 id 与协议 id 也不得相撞。
 
-完整示例:[`plugins/VelaShell.Plugin.Redis`](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Redis)(键空间浏览器 + 类型详情 + 声明式连接表单)。
+完整示例:[`plugins/VelaShell.Plugin.Redis`](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Redis)(键空间浏览器 + 类型详情 + 声明式连接表单)。
 最快的起点:`dotnet new velaplugin-workspace`(见 §2.4,默认带一个经 SSH 隧道的字段,不需要就按注释删掉)。
 
 #### 5.14.1 工作台变体与自定义分页(`VariantKey` / `Variants` / `Pages`)
@@ -1276,7 +1276,7 @@ public async Task Refresh_ListsContainers()
 ## 12. `.vpx` 包格式与签名
 
 `.vpx` 是 VelaShell 的**专属容器格式**,不是改了后缀的 zip:通用解压工具打不开它,
-宿主也拒装裸 zip。实现见 [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) 的 `src/VelaShell.PluginSdk/Packaging/VpxContainer.cs`,
+宿主也拒装裸 zip。实现见 [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) 的 `src/VelaShell.PluginSdk/Packaging/VpxContainer.cs`,
 读(宿主装包)与写(`vela-plugin pack`)是同一份代码,不存在"工具打得出、宿主装不上"的缝。
 
 ### 12.1 布局

@@ -90,13 +90,13 @@ flowchart TB
 | 仓库 | 内容 |
 | --- | --- |
 | [joesdu/VelaShell](https://github.com/joesdu/VelaShell) | 宿主主程序 |
-| [velashell-plugin-sdk](https://github.com/VelaShellLabs/velashell-plugin-sdk) | `VelaShell.PluginSdk`、`.Testing`、`.Build`(插件工程引用的那一个包,2026-09-11 从 velashell-plugin-cli 搬来) |
-| [velashell-plugin-cli](https://github.com/VelaShellLabs/velashell-plugin-cli) | `vela-plugin` 命令行 |
-| [velashell-plugin-templates](https://github.com/VelaShellLabs/velashell-plugin-templates) | `dotnet new velaplugin*` 模板(基础 / 面板 / 协议 / 工作台) |
-| [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins) | 第一方插件:Redis / S3 / Telnet / 串口 / RDP / VNC / [Docker 管理面板](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.DockerPanel) |
-| [velashell-markets](https://github.com/VelaShellLabs/velashell-markets) | 插件市场:上传、审核、检索与分发 |
-| [velashell-identity](https://github.com/VelaShellLabs/velashell-identity) | 统一认证服务(OIDC / OpenIddict):生态的信任根,下游只验令牌 |
-| [velashell-feeds](https://github.com/VelaShellLabs/velashell-feeds) | 资讯服务:CVE 聚合与公告/广告投放,给消息中心供稿 |
+| [velashell-plugin-sdk](https://github.com/VelaShell/velashell-plugin-sdk) | `VelaShell.PluginSdk`、`.Testing`、`.Build`(插件工程引用的那一个包,2026-09-11 从 velashell-plugin-cli 搬来) |
+| [velashell-plugin-cli](https://github.com/VelaShell/velashell-plugin-cli) | `vela-plugin` 命令行 |
+| [velashell-plugin-templates](https://github.com/VelaShell/velashell-plugin-templates) | `dotnet new velaplugin*` 模板(基础 / 面板 / 协议 / 工作台) |
+| [velashell-plugins](https://github.com/VelaShell/velashell-plugins) | 第一方插件:Redis / S3 / Telnet / 串口 / RDP / VNC / [Docker 管理面板](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.DockerPanel) |
+| [velashell-markets](https://github.com/VelaShell/velashell-markets) | 插件市场:上传、审核、检索与分发 |
+| [velashell-identity](https://github.com/VelaShell/velashell-identity) | 统一认证服务(OIDC / OpenIddict):生态的信任根,下游只验令牌 |
+| [velashell-feeds](https://github.com/VelaShell/velashell-feeds) | 资讯服务:CVE 聚合与公告/广告投放,给消息中心供稿 |
 
 ## 改文档
 

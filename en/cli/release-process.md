@@ -72,7 +72,7 @@ This repository's policy:
 | --- | --- |
 | Policy name | `velashell-plugin-cli` (anything you will recognise) |
 | Policy owner | `joes_du` |
-| Repository Owner | `VelaShellLabs` |
+| Repository Owner | `VelaShell` |
 | **Repository** | `velashell-plugin-cli` |
 | **Workflow File** | `release.yml` — **the file name only**, without the `.github/workflows/` prefix |
 | Environment | Leave empty (the workflow does not use GitHub Environments) |

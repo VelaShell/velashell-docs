@@ -2,7 +2,7 @@
 
 English: [VNC plugin: design and use](../../en/host/vnc-plugin-design-and-use.md)。
 
-`velashell.vnc` 位于 [velashell-plugins](https://github.com/VelaShellLabs/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Vnc),是进程内工作台插件,在 Windows、Linux、macOS 的 Avalonia 标签页中显示 VNC(RFB)远程桌面:Linux 桌面(TigerVNC、x11vnc 等)、macOS 屏幕共享、Windows 上的 VNC 服务,以及 QEMU/libvirt 等虚拟机控制台。引擎是**纯托管 C# 的 RFB 客户端**,不依赖原生 VNC 库,不捆绑原生二进制,不启动外部查看器窗口,全 RID 通用。
+`velashell.vnc` 位于 [velashell-plugins](https://github.com/VelaShell/velashell-plugins/tree/main/plugins/VelaShell.Plugin.Vnc),是进程内工作台插件,在 Windows、Linux、macOS 的 Avalonia 标签页中显示 VNC(RFB)远程桌面:Linux 桌面(TigerVNC、x11vnc 等)、macOS 屏幕共享、Windows 上的 VNC 服务,以及 QEMU/libvirt 等虚拟机控制台。引擎是**纯托管 C# 的 RFB 客户端**,不依赖原生 VNC 库,不捆绑原生二进制,不启动外部查看器窗口,全 RID 通用。
 
 结构与 [RDP 插件](RDP远程桌面插件设计与使用.md)同一种分法:Plugin → Provider → Document → View → DesktopControl。
 
