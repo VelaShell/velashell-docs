@@ -302,7 +302,8 @@ override-redirect 窗口不归窗口管理器摆,恒为 false。`_NET_MOVERESIZE
     (Avalonia 已经给了 KeyUp 时这一步什么也不做)。
 - **授权**:默认只监听 `127.0.0.1`(TCP 默认只在配了 cookie 时开,§4)与 Unix 套接字。依次判断:① 调用方已经验过身份的流(`ServeAuthenticatedAsync`,
   宿主的 SSH 连接器用它 —— 假 cookie 在 SSH 那一层已经核对过)放行;② 带了对的 `MIT-MAGIC-COOKIE-1`(常数时间比较)放行;
-  ③ 能确定对端就是运行服务端的这个用户 —— 取得到对端 uid 时(Linux 的 SO_PEERCRED,macOS / FreeBSD 的 getpeereid)以 uid 为准,
+  SECURITY 签发的 cookie 按其信任级别登记连接，撤销授权时断开对应连接。同 UID 的对端显式提交无效凭据也会被拒绝。
+  ③ 没有提交凭据且能确定对端就是运行服务端的这个用户 —— 取得到对端 uid 时(Linux 的 SO_PEERCRED,macOS / FreeBSD 的 getpeereid)以 uid 为准,
   与本进程的有效 uid 相同才算;取不到(Windows)时才看套接字文件在 `bind` 与 `listen` 之间设成的 0600 —— 放行(自定义路径落在 9p / drvfs
   这类 chmod 不报错却不生效的文件系统上时,只看文件权限的话谁都连得上);
   ④ 知道对端 uid 而它是别的用户:拒(Linux 抽象命名空间里的套接字没有文件权限可言,不看 uid 的话本机任何用户都能连进来
@@ -349,7 +350,7 @@ override-redirect 窗口不归窗口管理器摆,恒为 false。`_NET_MOVERESIZE
     键盘不归它时(按当前焦点、指针、抓取与选择,键盘事件送不到任何非受信客户端):QueryKeymap / KeymapNotify 全 0、GrabKeyboard 与键盘的
     XIGrabDevice 回 AlreadyGrabbed、SetInputFocus 不生效、它的被动键盘抓取不激活、按键引起的 XKB StateNotify 不发给它。改键位表、修饰键、
     键盘与指针设置、XKB / XI 的设备设置、主机访问控制与 KillClient(AllTemporary)回 Access;GrabServer 忽略。根窗口上的 CUT_BUFFER0–7 对它隐藏,
-    它改服务端窗口上的属性当作没发生(选区窗口上服务端替宿主取剪贴板用的 `_VELASHELL_*` 除外 —— 选区经宿主中转照常可用);
+    它改服务端窗口上的属性当作没发生（选区属主可以写入本次剪贴板传输在选区窗口上指定的属性）；
     要受信客户端占着的选区回 property None;GetImage 被别的窗口挡住的地方填 0;它把背景设成 None 时用黑色。
   - `RestrictForwardedClients` 保留:它是「受信、但不给 XTEST / 原始按键 / 改设备层级」的中间一档,给在非受信下工作不正常的老程序;
     非受信客户端本来就受这三项限制。
@@ -362,12 +363,11 @@ override-redirect 窗口不归窗口管理器摆,恒为 false。`_NET_MOVERESIZE
   `IEmbeddedXServerHost.SessionDisplayCloseRequested` 告诉 `BuiltInLocalXServer`,有程序连着时先确认),别的会话与共用的显示不受影响,
   这个会话之后再开 X 程序时另建一个 —— 2026-10-10 核对之前关掉任何一个会话的桌面都停整个 X Server。
 - **多个会话共用一个显示时的收紧**(同一个显示上、受信的会话之间):
-  - **剪贴板跟着键盘焦点所在的会话走**(`X11ServerOptions.ClipboardFollowsFocus`,默认开):宿主的文本只给焦点所在顶层的客户端、以及与它连接名
-    相同的客户端(同一个 SSH 会话里的 `xclip` / `xsel`,连接名见 `ServeAuthenticatedAsync(stream, label)`)读,X 这边的复制也只收那个会话的;
+  - **剪贴板跟着键盘焦点所在的会话走**(`X11ServerOptions.ClipboardFollowsFocus`,默认开):  宿主的文本只给焦点所在顶层的客户端及同一 SSH 连接内的程序读，包括 `xclip` / `xsel`。两次连接即使使用相同的用户名、主机和端口，也各有独立的会话标识。嵌入宿主调用 `ServeAuthenticatedAsync` 时，为同一连接的通道传入同一个会话对象。不传会话对象的预认证流各有独立作用域。
+      X 这边的复制只收焦点会话的数据，每次转换的应答和 INCR 数据块只接受本次选区属主写入。
     没有 X 窗口有焦点时谁都读不到。否则本机复制的密码在用户点一下任意 X 窗口之后对所有会话可读,后台会话里的程序也能反复改写本机剪贴板。
     服务端替宿主占有剪贴板时,XFIXES 的属主通知也只发给读得到的客户端 —— 别的会话本可以据此精确得知「本机剪贴板何时有了新内容」。
-    开着时 PRIMARY、SECONDARY、CLIPBOARD 还**按会话隔离**:选区表按「原子 + 作用域」存,每个会话(连接名相同的客户端;没有连接名的本机程序
-    同属一个本机会话)各有各的属主 —— SetSelectionOwner、GetSelectionOwner、ConvertSelection、SelectionClear、XFIXES 通知、属主窗口销毁 /
+    开着时 PRIMARY、SECONDARY、CLIPBOARD 还**按会话隔离**:选区表按「原子 + 作用域」存,    每个会话(具有同一会话标识的客户端，本机套接字程序同属一个本机会话)各有各的属主 —— SetSelectionOwner、GetSelectionOwner、ConvertSelection、SelectionClear、XFIXES 通知、属主窗口销毁 /
     属主断开都只在那个会话里生效。别的会话看不到属主变化、收不到因此发的 SelectionClear,也读不到另一个会话里的复制。其余选区
     (`WM_S0`、XSETTINGS、拖放……)照协议全显示共享。跨会话的复制粘贴经宿主的剪贴板中转:剪贴板内容有一个逻辑时钟(宿主给了新文本、
     X 端的复制交给了宿主、哪个会话里的程序占有了同步的选区,各推进一格),某个会话拿到焦点(PointerRoot 时指针换了顶层)时它那一份
@@ -660,7 +660,7 @@ override-redirect 窗口不归窗口管理器摆,恒为 false。`_NET_MOVERESIZE
     远端跑了个合成器(`xfwm4 --replace` 之类)接走这个选区又退出、或者谁把属主设成了 None 时,服务端接回来,按 ICCCM §2.8 向根窗口广播
     MANAGER(选了 StructureNotify 的客户端收到)。`ClientSideShadows` 仍默认关(Windows 上透明的阴影区照样接住鼠标)。
   - **X-Resource 的 LocalClientPid(F28)**:经 Unix 套接字连进来的客户端记下对端 pid(Linux 经 SO_PEERCRED,macOS 经 LOCAL_PEERPID),
-    QueryClientIds 回给本身也是本机客户端的请求方。
+    QueryClientIds 回给本身也是本机客户端的请求方。请求中每个标识规范占 8 字节，声明条数与实际长度不符时返回 BadLength。
   - **计量仪表(F27)**:`XServerMetrics` 交出仪表源名 `VelaShell.XServer`:`clients.active`、`connections.refused`(reason:authorization、
     too_many_clients、too_many_setups、bad_setup)、`clients.disconnected`(killed、output_backlog)、`protocol.errors`(code 是错误名)、
     `work.duration`(毫秒直方图,没人订阅时不记)、`work.stalled`。看门狗见 §5。

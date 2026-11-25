@@ -413,7 +413,7 @@ extra (the slack is not charged).
     the ones still down when Command goes up (if Avalonia does deliver the KeyUp, this does nothing).
 - **Authorization**: listens on `127.0.0.1` (TCP by default only with a cookie configured, §4) and Unix sockets. In order: ① a stream the caller
   has already authenticated (`ServeAuthenticatedAsync`, used by the host's SSH connector — the fake cookie was already checked at the SSH layer)
-  is admitted; ② a correct `MIT-MAGIC-COOKIE-1` (compared in constant time) is admitted; ③ a peer known to be the user running the server is
+  is admitted. ② A correct `MIT-MAGIC-COOKIE-1` is admitted (constant-time comparison). A SECURITY-issued cookie binds the connection to its trust level and revocation disconnects it. An invalid explicit credential is rejected even for a same-UID peer. ③ A peer presenting no credentials and known to be the user running the server is
   admitted — when the peer uid is available (SO_PEERCRED on Linux, getpeereid on macOS / FreeBSD) the uid decides and must equal this process's
   effective uid; only when it is not (Windows) does the socket file's 0600 mode, set between `bind` and `listen`, decide (a custom path on a file
   system such as 9p / drvfs, where chmod silently does nothing, would otherwise let anyone in);
@@ -481,8 +481,7 @@ extra (the slack is not charged).
     GrabKeyboard and keyboard XIGrabDevice return AlreadyGrabbed, SetInputFocus has no effect, its passive keyboard grabs do not activate, and
     key-caused XKB StateNotify is not sent to it. Changing the keymap, modifiers, keyboard and pointer controls, XKB / XI device settings, host
     access control and KillClient(AllTemporary) return Access; GrabServer is ignored. CUT_BUFFER0–7 on the root window are hidden from it, and
-    its property changes on server windows are treated as no-ops (except the `_VELASHELL_*` atoms on the selection window that the server uses to
-    fetch the clipboard for the host — selections still work through the host); asking for a selection owned by a trusted client returns
+    its property changes on server windows are treated as no-ops (the selection owner can write the property assigned to its active clipboard transfer on the selection window); asking for a selection owned by a trusted client returns
     property None; GetImage fills areas obscured by other windows with 0; a None background it sets is drawn black.
   - `RestrictForwardedClients` stays: it is the middle tier "trusted, but no XTEST / raw keys / device hierarchy changes" for old programs that
     misbehave when untrusted; untrusted clients get all three restrictions anyway.
@@ -500,14 +499,13 @@ extra (the slack is not charged).
   review, closing any session's desktop stopped the whole X Server.
 - **Several sessions sharing one display — what is tightened** (on one display, between trusted sessions):
   - **The clipboard follows the session with the keyboard focus** (`X11ServerOptions.ClipboardFollowsFocus`, on by default): the host's text can be
-    read only by the client owning the focused top-level and by clients with the same connection label (`xclip` / `xsel` in the same SSH session;
-    labels come from `ServeAuthenticatedAsync(stream, label)`), and only copies from that session reach the host; with no X window focused nobody
+    read only by the client owning the focused top-level and by programs on the same SSH connection, including `xclip` and `xsel`. Two connections to the same user, host and port have distinct session identities. An embedding host can group channels by passing the same session object to `ServeAuthenticatedAsync`. Each preauthenticated stream without a session object gets a separate scope.
+    Only copies from the focused session reach the host. For each conversion the server accepts the reply and INCR chunks only from the selected owner. With no X window focused nobody
     can read it. Otherwise a password copied locally would be readable by every session as soon as the user clicked any X window, and programs in
     background sessions could keep rewriting the local clipboard. While the server owns the clipboard on the host's behalf, XFIXES owner
     notifications also go only to clients that can read it — other sessions could otherwise learn exactly when the local clipboard got new
     content. While it is on, PRIMARY, SECONDARY and CLIPBOARD are also **isolated per
-    session**: the selection table is keyed by "atom + scope", and each session (clients with the same connection label; local programs without a
-    label all belong to one local session) has its own owner — SetSelectionOwner, GetSelectionOwner, ConvertSelection, SelectionClear, XFIXES
+    session**: the selection table is keyed by "atom + scope",     and each session has its own owner. Clients share a scope by session identity. Local socket clients share a local scope — SetSelectionOwner, GetSelectionOwner, ConvertSelection, SelectionClear, XFIXES
     notifications, and an owner window being destroyed or its owner disconnecting all take effect only within that session. Other sessions see no
     owner changes, get no SelectionClear because of them, and cannot read what was copied in another session. All other selections (`WM_S0`,
     XSETTINGS, drag and drop …) stay display-wide as the protocol defines them. Copy and paste across sessions goes through the host clipboard:
@@ -953,7 +951,7 @@ extra (the slack is not charged).
     then exits, or someone sets the owner to None, the server takes it back and broadcasts MANAGER on the root window per ICCCM §2.8 (to clients
     that selected StructureNotify). `ClientSideShadows` stays off by default (on Windows the transparent shadow margin still catches the mouse).
   - **X-Resource LocalClientPid (F28)**: clients connecting over the Unix socket record the peer pid (Linux via SO_PEERCRED, macOS via
-    LOCAL_PEERPID), and QueryClientIds returns it to requestors that are local clients themselves.
+    LOCAL_PEERPID), and QueryClientIds returns it to requestors that are local clients themselves. Each client ID specification occupies eight bytes. A count that disagrees with the request length returns BadLength.
   - **Metrics (F27)**: `XServerMetrics` exposes the meter name `VelaShell.XServer`: `clients.active`, `connections.refused` (reason: authorization,
     too_many_clients, too_many_setups, bad_setup), `clients.disconnected` (killed, output_backlog), `protocol.errors` (code is the error name),
     `work.duration` (a millisecond histogram, not recorded without a subscriber), `work.stalled`. The watchdog is in §5.
