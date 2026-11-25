@@ -199,7 +199,7 @@ the size becomes the starting value of the stream's `Length` — `Seek(SeekOrigi
 An open with `TRUNC` need not ask: the length is 0.
 
 - The server refusing `FSTAT` (an error status) **does not fail the open**: the length starts at 0 and is marked "unknown"; the stream reads and writes as usual,
-  only `Length` and `Seek(SeekOrigin.End)` are inaccurate, and sequential reads cannot build up read-ahead (§5.5 only sends ahead within the known length).
+  only `Length` and `Seek(SeekOrigin.End)` are inaccurate, and sequential reads stay conservative when the handle type is unknown (§5.5).
 - 〔Decision〕**Any other failure after `OPEN` succeeded and before the stream reaches the caller (cancellation, a broken pipeline, a malformed `FSTAT` reply)
   first sends `CLOSE` for the handle, then propagates the error.** At that moment the handle exists only on the server and nothing on our side holds it yet;
   without the close, every such failure leaks one, until the server's `max-open-handles` runs out. This is the other half of the problem in §5.3 ("a late reply to a cancelled `OPEN` must be closed").
@@ -480,6 +480,7 @@ and none of the depth the pipelined write side uses comes into play. Downloads t
   Callers that read only the first few bytes of a file don't trigger a burst of needless requests.
 - **No read-ahead past the known length**: requests are sent ahead only for offsets within the known length; beyond it, at most one request —
   to reach `EOF`, or to notice that the file grew after it was opened. The known length comes from `FSTAT` at open time and is pushed forward by the data read.
+- **Unknown length**. When handle attributes identify a regular file but omit its size, sequential reads can grow to eight requests, within the configured pipeline depth and a 1 MiB read-ahead budget. Special files and unclassified handles issue a single read beyond the observed length.
 - **Short read** (the server returns fewer bytes than requested, and it is not `EOF`): hand out those bytes; 〔Decision〕**request only the gap, at the front of the queue, keep the requests already sent behind it, and leave the window as it is** (Q11).
   When a block lying entirely within the known length still comes back short, the server's read limit is smaller than the block (and was not announced): later requests use the length it actually returned (no less than 4 KiB), and gaps are split at that length too.
   If the gap reaches the end of the file, the request for it returns `EOF`, which counts as the end of reading as usual (the read-in-a-loop semantics of §4.3 are unchanged).

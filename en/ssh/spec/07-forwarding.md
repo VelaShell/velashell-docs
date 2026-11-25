@@ -504,7 +504,7 @@ excluding the second in progress costs one to two seconds of lag.
 
 〔Decision〕**Rate limits are per forwarder and per direction**: all connections of a forwarder share one token bucket (one per direction) ——
 "how much bandwidth this tunnel may take" belongs to the forwarder, not to a single connection; otherwise opening ten connections means ten times the rate.
-**A burst of one second's allowance** is allowed; after that the deficit is carried and waited off; after a pause the allowance refills, but never beyond one second's worth.
+**A burst of one second's allowance** is allowed. Only granted requests consume allowance. Cancelling a waiter leaves accrued capacity available to the next connection. Idle time replenishes at most one second's allowance.
 
 〔Decision〕**Wait in the copy loop, before writing to the other side**: while waiting nothing more is read, the data stays in the read buffer, and backpressure flows back to the sender through the TCP window / channel window ——
 no extra buffer and no dropped data. Use: with several tunnels open over a slow link, one download cannot crowd out the interactive terminal.
@@ -1216,6 +1216,8 @@ so another user on the same machine can bind `@/tmp/.X11-unix/X<N>` first and re
 For cookie selection it still counts as a local display (the local host name's FamilyLocal entry, §7.5.7) — "where to connect" and "which cookie to use" are separate questions.
 
 ### 7.5.7 Where the real cookie comes from
+
+The authority file size limit is 1 MiB. An oversized file yields no cookies, fails strict decoding, and is left in place by the built-in X server.
 
 | Mode | Source |
 | --- | --- |
