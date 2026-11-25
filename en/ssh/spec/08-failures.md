@@ -529,8 +529,7 @@ Wherever the specs say "log one debug entry", only the action itself (discard, i
 | `Warning` | Downgrades (SHA-1 signatures, no strict KEX), retries, single forwarded connection failures |
 | `Error` | Connection-level failures |
 
-〔Decision〕**"Peer does not support strict KEX" must be logged at Warning.** It does not block the connection (§03 6),
-but users should be able to see it — it is a real missing security property.
+〔Decision〕When both directions use AES-GCM, a connection without strict KEX may continue. Surface that state as a warning. With any other cipher the exchange fails with `NegotiationFailed` (§03 6).
 
 〔Decision〕**Hot-path logging uses the `LoggerMessage` source generator.**
 One Trace log per packet, if done with string interpolation, would become the main overhead during full-speed transfers.

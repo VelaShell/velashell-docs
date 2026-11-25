@@ -196,21 +196,19 @@ The name constants for `aes256-cbc` / `aes128-cbc` are kept and marked as not im
 
 ### 6.5 Compression
 
-| Algorithm | Default |
-| --- | :-: |
-| `none` | ✅ |
-| `zlib@openssh.com` (compression starts only after authentication) | Optional, off by default |
-| `zlib` (RFC 4253, compression starts during the handshake) | ❌ Not implemented |
+The end target's terminal SSH profile selects the following KEXINIT preferences. Each direction negotiates independently, falling back to `none` if both peers offer it. A direction with no common algorithm fails negotiation.
 
-〔Decision〕**Only `zlib@openssh.com` is implemented; plain `zlib` is not.** Plain `zlib` compresses from the first NEWKEYS,
-so authentication packets (passwords, public-key signatures) are in the compressed stream too —— ciphertext length leaks the
-compressibility of the plaintext, and an unauthenticated party can mount a CRIME-style compression side channel.
-OpenSSH servers have long compressed only after authentication, so leaving out plain `zlib` does not hurt real-world interop.
-Even if a caller adds `zlib` to the list by hand, the pre-connect list check rejects it (§6.6) rather than it being silently treated as no compression (see 01 §6).
+| Profile mode | Client → server | Server → client |
+| --- | --- | --- |
+| `Off` (default) | `none` | `none` |
+| `UploadOnly` | `zlib@openssh.com`, `none` | `none` |
+| `Bidirectional` | `zlib@openssh.com`, `none` | `zlib@openssh.com`, `none` |
 
-〔Decision〕**Compression is off by default**, consistent with OpenSSH.
-Rationale: on modern links compression is usually not worth it (trading CPU for bandwidth), and the combination of compression + encryption carries
-the historical lesson of CRIME-style side channels. Those who need it (weak networks, high latency) turn it on explicitly with `WithCompression()`.
+Until `SSH_MSG_USERAUTH_SUCCESS`, both directions carry uncompressed payloads. On rekey, reuse the policy and authentication state, starting a fresh stream for each direction that negotiates delayed compression under the new keys. Plain `zlib` is excluded.
+
+The client encoder uses Huffman-only DEFLATE to avoid dictionary matches against secret bytes in other traffic. Ciphertext lengths remain observable. The algorithm name does not identify the server's encoding strategy. An administrator may explicitly select `Bidirectional` only after confirming equivalent mitigation on that server. Neither an imported `Compression yes` nor an old saved compression flag grants that trust.
+
+The original `SshAlgorithmSet.WithCompression()` overload requests `UploadOnly`. The explicit overload `SshAlgorithmSet.WithCompression(bool allowServerCompression)` requests the same mode with `false`. Pass `true` for `Bidirectional` after confirming the server’s encoder. Independent SFTP profiles and intermediate jump hosts use `Off`. Standard SSH negotiates compression per transport direction, so every channel on a terminal connection, including forwarded SOCKS traffic and SFTP, shares the result.
 
 ### 6.6 The legacy switch and list validation
 
@@ -225,7 +223,7 @@ without dialing. The rule and its rationale are in 03 §2.2.
 
 〔Decision〕**The algorithm catalog is public** (`SshAlgorithmCatalog`): for each category (`SshAlgorithmCategory`), which names are implemented (`Implemented`,
 in preference order: the default list first, legacy algorithms after) and which common names are not (`KnownUnimplemented`, e.g. CBC, `umac-*`, `ssh-dss`).
-Consumers that let users write their own lists use it to say on the spot "not implemented" versus "not recognized". It shares one source of truth with the validation above and with the factory tables, checked name by name in the tests.
+Consumers that let users write their own lists use it to say on the spot "not implemented" versus "not recognized". See §6.5 for the compression modes each direction can offer.
 〔History〕Without this catalog the host inferred what was implemented from `Default.WithLegacyInterop()` and maintained its own hand-written "known but unimplemented" list.
 
 〔Decision〕**A list of FIPS-approved algorithms only**: `SshAlgorithmSet.FipsApprovedOnly`. Compared with the RHEL 10.2 FIPS crypto policy for OpenSSH (the lists crypto-policies gives OpenSSH),

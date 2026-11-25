@@ -49,7 +49,7 @@ sequenceDiagram
         end
     end
 
-    Note over C,S: After SUCCESS:<br/>· zlib@openssh.com starts compressing<br/>· enter the ssh-connection service
+    Note over C,S: After SUCCESS enter the ssh-connection service
 ```
 
 ---
@@ -724,7 +724,7 @@ Both positions must be accepted. **Received at any other position → protocol e
 | Extension | Purpose |
 | --- | --- |
 | `server-sig-algs` | §4.4 — without it the RSA signature algorithm cannot be chosen safely |
-| `delay-compression` | 〔Decision〕**Not implemented.** `zlib@openssh.com` already solves the same problem |
+| `delay-compression` | 〔Decision〕**Not implemented.** `zlib@openssh.com` uses its own activation rule. After `SSH_MSG_USERAUTH_SUCCESS`, it takes effect independently in each direction that negotiated it (00 §6.5). |
 | `no-flow-control` | 〔Decision〕**Not implemented.** Our window management depends on flow control |
 | `elevation` | 〔Decision〕**Not implemented** (Windows-server specific) |
 | `publickey-hostbound@openssh.com` | 〔Decision〕**Not implemented.** Its purpose is to let the agent's destination constraints be checked on the hops **forwarded onward**; for the first hop, the destination is handed to the agent by the session binding (`07-forwarding.md` §7.4), and this library is always the first hop — when going through jump hosts, every hop is also authenticated directly from the local machine |

@@ -448,30 +448,11 @@ and synchronous `Dispose` hands teardown to the background and returns immediate
 
 ## 7. Compression
 
-**Off by default.** To turn it on, say so explicitly:
+Terminal SSH profiles default to `Off`. To compress data sent to the end target only, select `UploadOnly` or use `SshAlgorithmSet.Default.WithCompression()`. The client uses Huffman-only encoding. Select `Bidirectional` (`WithCompression(allowServerCompression: true)`) only after an administrator confirms that the server encoder has equivalent protection against dictionary-based length leaks.
 
-```csharp
-var options = new SshConnectionOptions("root@example.com")
-{
-    Algorithms = SshAlgorithmSet.Default.WithCompression(),   // zlib@openssh.com
-};
-```
+Each enabled direction offers `zlib@openssh.com` followed by `none`. Traffic stays uncompressed until authentication succeeds, including during a pre-authentication rekey. Later rekeys preserve the policy. Compression may save bandwidth without reducing network round-trip time.
 
-Two things worth knowing first:
-
-1. **Turning it on for interactive sessions is basically a net loss.** Terminal output is small to begin with, and the bytes saved by compression
-   do not pay for the CPU on both ends. **Incompressible content (already-compressed files, encrypted data) gets bigger after compression.**
-   Scenarios worth enabling it for are SFTP transfers of text, or links billed by traffic.
-2. **`zlib@openssh.com` only starts compressing after authentication**, which is its only difference from the old `zlib`.
-   The reason is that compressed length leaks the compressibility of the plaintext — during authentication, that amounts to opening a
-   distinguishing channel for the password (the CRIME family). So we offer only the former.
-
-**Whether compression was actually negotiated is something you have to check yourself** — when the server does not support it, it silently falls back to `none`,
-**without an error**:
-
-```csharp
-Console.WriteLine(conn.Algorithms.CompressionServerToClient);   // zlib@openssh.com or none
-```
+Intermediate jump hosts and independent SFTP profiles use `none`. SOCKS, other forwarded channels and SFTP opened on the terminal connection share its negotiated directions. SSH connection information shows both results.
 
 `Algorithms` exposes all algorithms actually negotiated for this session (key exchange, host key,
 encryption and integrity for both directions, compression for both directions, whether strict KEX was enabled).
@@ -710,7 +691,7 @@ await using SshConnection conn = await SshConnection.ConnectAsync(options, ct);
 await using SshShell shell = await conn.OpenShellAsync(SshConfigFile.Resolve(blocks, "prod-web-1").ApplyToShell(), ct);
 ```
 
-`HostName` / `Port` / `User` / `IdentityFile` / `Compression` / `ServerAlive*` / `ConnectTimeout` /
+`HostName` / `Port` / `User` / `IdentityFile` / `ServerAlive*` / `ConnectTimeout` /
 `StrictHostKeyChecking` / `UserKnownHostsFile` / `ProxyJump` / `ProxyCommand` all map onto connection parameters;
 each jump host in `ProxyJump` is **resolved against the same configuration**, and the jump chain has a depth limit and cycle detection.
 Item-by-item rules are in [`spec/09-dialing.md`](spec/09-dialing.md) §7.

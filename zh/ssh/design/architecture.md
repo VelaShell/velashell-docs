@@ -2,6 +2,7 @@
 
 > 状态：**已决策，M0–M5 完成 + 面向使用者的连接层**（2026-09-21）。本文定方向、架构与原理。
 > 实现依据不是本文，是 [`spec/`](../spec/) 下的行为规格 —— 见 §2.2 第 2 条纪律。
+> 下文的压缩示例、基准及 `ssh_config` 映射记录的是旧设计。终端配置的压缩模式和公开的 `WithCompression` API 见 [SSH 概览 §6.5](../spec/00-overview.md)。
 >
 > 依据：对 `Tmds.Ssh`（MIT，2026-09 快照，28,769 行）与 VelaShell 当前 SSH 栈
 > （`Infrastructure/Ssh/` + `Core/Ssh/` + `Core/Sftp/`，约 8,600 行）的逐文件通读。

@@ -47,7 +47,7 @@ sequenceDiagram
         end
     end
 
-    Note over C,S: SUCCESS 之后：<br/>· zlib@openssh.com 开始压缩<br/>· 进入 ssh-connection 服务
+    Note over C,S: SUCCESS 之后进入 ssh-connection 服务
 ```
 
 ---
@@ -711,7 +711,7 @@ sequenceDiagram
 | 扩展 | 用途 |
 | --- | --- |
 | `server-sig-algs` | §4.4 —— 没有它就无法安全选择 RSA 签名算法 |
-| `delay-compression` | 〔决策〕**不实现**。`zlib@openssh.com` 已经解决同一问题 |
+| `delay-compression` | 〔决策〕**不实现**。`zlib@openssh.com` 有自己的延迟启用规则，在 `SSH_MSG_USERAUTH_SUCCESS` 之后，分别对谈成该算法的方向生效（00 §6.5）。 |
 | `no-flow-control` | 〔决策〕**不实现**。我们的窗口管理依赖流控 |
 | `elevation` | 〔决策〕**不实现**（Windows 服务端专用） |
 | `publickey-hostbound@openssh.com` | 〔决策〕**不做**。它为的是 agent 的目的地约束能在**转发出去的**那几跳上核对；第一跳的目的地由会话声明交给 agent（`07-forwarding.md` §7.4），而本库永远是第一跳 —— 经跳板时每一跳也都是本机直接认证 |

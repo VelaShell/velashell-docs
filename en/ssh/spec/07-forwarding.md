@@ -12,6 +12,8 @@
 
 ## 1. Four kinds of forwarding
 
+SOCKS and other forwarded channels share the terminal SSH transport’s negotiated compression in each direction. Standard SSH offers no per-channel compression setting. Each intermediate jump host uses its own SSH transport with compression `Off`.
+
 | Form | OpenSSH flag | Who listens | What goes outbound |
 | --- | :-: | --- | --- |
 | **Local forwarding** | `-L` | Us (local machine) | A `direct-tcpip` channel |

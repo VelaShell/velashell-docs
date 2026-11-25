@@ -18,6 +18,8 @@
 
 ## 1 Transport and handshake
 
+A dedicated SFTP connection negotiates `none` for SSH compression in both directions. An SFTP channel opened on a terminal SSH connection shares the transport’s negotiated compression. Standard SSH has no per-channel override. Application-level file packaging is outside the transport policy.
+
 SFTP runs on top of a `subsystem` request on a `session` channel:
 
 ```mermaid
