@@ -162,7 +162,7 @@ forwarding built in (Session → Tunnels → remote forward); point it at
 
 ## 2. The outbound MCP server
 
-The `Mcp-Session-Id` returned by `initialize` is valid only for that server session. Subsequent requests without the header receive HTTP 400; an ID invalidated by a restart or idle eviction receives HTTP 404. On 404, send `initialize` again without the old ID and use the new ID for subsequent requests.
+The `Mcp-Session-Id` returned by `initialize` is valid only for that server session. Subsequent requests without the header receive HTTP 400; an ID invalidated by a restart or idle eviction receives HTTP 404. On 404, send `initialize` again without the old ID and use the new ID for subsequent requests. The server negotiates MCP `2025-11-25` (and remains compatible with `2025-06-18`); newer sessions require a matching `MCP-Protocol-Version` on subsequent requests. POST requests must accept both `application/json` and `text/event-stream` and use `application/json` bodies. The server accepts only loopback Host/Origin values and caps each tool text result at 256 KiB (262,144 characters), appending a truncation notice when needed.
 
 Lets Claude Code / Codex / Cursor and friends call VelaShell's tools the other way round: enumerate
 sessions, read the terminal, run one-shot commands, read and write remote files. The tools are the
