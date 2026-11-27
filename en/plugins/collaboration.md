@@ -162,6 +162,8 @@ forwarding built in (Session → Tunnels → remote forward); point it at
 
 ## 2. The outbound MCP server
 
+The `Mcp-Session-Id` returned by `initialize` is valid only for that server session. Subsequent requests without the header receive HTTP 400; an ID invalidated by a restart or idle eviction receives HTTP 404. On 404, send `initialize` again without the old ID and use the new ID for subsequent requests.
+
 Lets Claude Code / Codex / Cursor and friends call VelaShell's tools the other way round: enumerate
 sessions, read the terminal, run one-shot commands, read and write remote files. The tools are the
 same ones the AI plugin's agent mode uses, plus a `use_session` so the external agent can pick a
